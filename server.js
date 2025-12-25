@@ -1,155 +1,50 @@
 // ============================================
-// VividMedi Backend — Stable for Railway
+// VividMedi Backend – Minimal + Reliable
 // ============================================
 
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import fs from "fs";
-import PDFDocument from "pdfkit";
-import nodemailer from "nodemailer";
-import fetch from "node-fetch"; // keep-alive ping
 
-console.log("🩺 Initializing Express server...");
+console.log("🩺 Initializing Minimal VividMedi Backend...");
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
 // -----------------------------------------------
-// 💌 Brevo SMTP Transport Configuration
-// -----------------------------------------------
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-// -----------------------------------------------
-// 🧪 TEST ROUTE — check email delivery
-// -----------------------------------------------
-app.get("/api/test", async (req, res) => {
-  console.log("🧪 /api/test route triggered");
-
-  try {
-    const testPDF = new PDFDocument();
-    const filename = `vividmedi_test_certificate_${Date.now()}.pdf`;
-    const filepath = `./${filename}`;
-    const stream = fs.createWriteStream(filepath);
-    testPDF.pipe(stream);
-
-    testPDF.fontSize(18).text("VividMedi Test Medical Certificate", { align: "center" });
-    testPDF.moveDown();
-    testPDF.fontSize(12).text("This is a test email from your VividMedi backend.");
-    testPDF.text("If you received this email, your Brevo SMTP configuration works.");
-    testPDF.end();
-
-    stream.on("finish", async () => {
-      try {
-        console.log("📦 Attempting to send Brevo test email...");
-        const info = await transporter.sendMail({
-          from: `"VividMedi" <${process.env.EMAIL_USER}>`,
-          to: process.env.EMAIL_USER,
-          subject: "✅ VividMedi Test Certificate",
-          text: "This is a test certificate email sent via Brevo SMTP.",
-          attachments: [{ filename, path: filepath }],
-        });
-        console.log("📤 Brevo response:", info.response);
-        res.json({ success: true, message: "✅ Test email sent successfully", info });
-      } catch (err) {
-        console.error("❌ SMTP Send Error:", err);
-        res.status(500).json({ success: false, error: err.message });
-      }
-    });
-  } catch (err) {
-    console.error("❌ Route Error:", err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
-  }
-});
-
-// -----------------------------------------------
-// 🩺 SUBMIT ROUTE — sends actual certificates
-// -----------------------------------------------
-app.post("/api/submit", async (req, res) => {
-  try {
-    const data = req.body;
-    console.log("📥 Received patient data:", data);
-
-    const doc = new PDFDocument();
-    const filename = `medical_certificate_${Date.now()}.pdf`;
-    const filepath = `./${filename}`;
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
-
-    doc.fontSize(18).text("VividMedi Medical Certificate", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(12);
-    doc.text(`Name: ${data.firstName} ${data.lastName}`);
-    doc.text(`Date of Birth: ${data.dob}`);
-    doc.text(`Email: ${data.email}`);
-    doc.text(`Mobile: ${data.mobile}`);
-    doc.moveDown();
-    doc.text(`Type of Leave: ${data.certType}`);
-    doc.text(`Leave From: ${data.fromDate}`);
-    doc.text(`Leave To: ${data.toDate}`);
-    doc.moveDown();
-    doc.text(`Reason: ${data.reason}`);
-    doc.moveDown();
-    doc.text(`Symptoms: ${data.symptoms || "N/A"}`);
-    doc.moveDown();
-    doc.text(`Doctor Notes: ${data.doctorNote || "N/A"}`);
-    doc.moveDown(2);
-    doc.fontSize(10).text(
-      "This certificate was issued by an AHPRA-registered Australian medical doctor."
-    );
-    doc.end();
-
-    stream.on("finish", async () => {
-      await transporter.sendMail({
-        from: `"VividMedi" <${process.env.EMAIL_USER}>`,
-        to: data.email,
-        subject: "Your VividMedi Medical Certificate",
-        text: `Dear ${data.firstName},\n\nAttached is your VividMedi medical certificate.\n\nKind regards,\nVividMedi Medical Team`,
-        attachments: [{ filename, path: filepath }],
-      });
-
-      console.log("📤 Certificate sent successfully to", data.email);
-      res.json({ success: true, message: "Certificate sent successfully" });
-    });
-  } catch (err) {
-    console.error("❌ Error processing certificate:", err);
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
-  }
-});
-
-// -----------------------------------------------
-// 🌐 HEALTH CHECK ROUTE
+// 🌐 HEALTH CHECK
 // -----------------------------------------------
 app.get("/", (req, res) => {
-  res.send("✅ VividMedi Backend Running");
+  res.send("✅ VividMedi backend running fine (manual mode)");
 });
 
 // -----------------------------------------------
-// 🚀 START SERVER (keep-alive fix)
+// 📝 PATIENT DATA ENDPOINT
+// -----------------------------------------------
+app.post("/api/submit", (req, res) => {
+  const data = req.body;
+
+  console.log("📥 Received patient submission:");
+  console.log(JSON.stringify(data, null, 2));
+
+  // optional: save each submission to a file for later
+  const logEntry = `${new Date().toISOString()} — ${JSON.stringify(data)}\n`;
+  fs.appendFileSync("patient_submissions.log", logEntry);
+
+  res.json({
+    success: true,
+    message:
+      "✅ Patient details received successfully. (Manual processing on your side.)",
+  });
+});
+
+// -----------------------------------------------
+// 🚀 START SERVER
 // -----------------------------------------------
 const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
-
-const server = app.listen(PORT, HOST, () => {
+app.listen(PORT, HOST, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
-// keep-alive ping to prevent Railway shutdown
-setInterval(async () => {
-  try {
-    const res = await fetch(`http://localhost:${PORT}/`);
-    const text = await res.text();
-    console.log("⏱️ Keep-alive:", text);
-  } catch (err) {
-    console.error("⚠️ Keep-alive failed:", err.message);
-  }
-}, 1000 * 60 * 4); // every 4 minutes
