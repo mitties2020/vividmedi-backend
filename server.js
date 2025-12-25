@@ -1,5 +1,5 @@
 // ============================================
-// VividMedi Backend (with Brevo SMTP support)
+// VividMedi Backend — Stable Railway Version
 // ============================================
 
 import express from "express";
@@ -8,6 +8,8 @@ import bodyParser from "body-parser";
 import fs from "fs";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
+
+console.log("🩺 Initializing Express server...");
 
 const app = express();
 app.use(cors());
@@ -19,7 +21,7 @@ app.use(bodyParser.json());
 const transporter = nodemailer.createTransport({
   host: "smtp-relay.brevo.com",
   port: 587,
-  secure: false, // TLS will be upgraded automatically
+  secure: false, // STARTTLS auto-upgrade
   auth: {
     user: process.env.EMAIL_USER, // your Brevo login email
     pass: process.env.EMAIL_PASS, // your Brevo SMTP key
@@ -27,10 +29,12 @@ const transporter = nodemailer.createTransport({
 });
 
 // -----------------------------------------------
-// 🧪 TEST ROUTE (checks email delivery)
+// 🧪 TEST ROUTE — verifies email setup
 // -----------------------------------------------
 app.get("/api/test", async (req, res) => {
   try {
+    console.log("🧪 /api/test route hit");
+
     const testPDF = new PDFDocument();
     const filename = `vividmedi_test_certificate_${Date.now()}.pdf`;
     const filepath = `./${filename}`;
@@ -40,37 +44,41 @@ app.get("/api/test", async (req, res) => {
     testPDF.fontSize(18).text("VividMedi Test Medical Certificate", { align: "center" });
     testPDF.moveDown();
     testPDF.fontSize(12).text("This is a test email from your VividMedi backend.");
-    testPDF.text("If you received this email, your Brevo SMTP configuration is working.");
+    testPDF.text("If you received this, your Brevo SMTP configuration works correctly.");
     testPDF.moveDown();
     testPDF.fontSize(10).text("Issued automatically by the VividMedi backend.");
     testPDF.end();
 
     stream.on("finish", async () => {
-      await transporter.sendMail({
-        from: `"VividMedi" <${process.env.EMAIL_USER}>`,
-        to: process.env.EMAIL_USER, // sends test to your own inbox
-        subject: "✅ VividMedi Test Certificate",
-        text: "This is a test certificate email sent via Brevo SMTP.",
-        attachments: [{ filename, path: filepath }],
-      });
-      console.log("📤 Test email sent successfully to", process.env.EMAIL_USER);
-      res.json({ success: true, message: "✅ Test email sent successfully" });
+      try {
+        const info = await transporter.sendMail({
+          from: `"VividMedi" <${process.env.EMAIL_USER}>`,
+          to: process.env.EMAIL_USER,
+          subject: "✅ VividMedi Test Certificate",
+          text: "This is a test certificate email sent via Brevo SMTP.",
+          attachments: [{ filename, path: filepath }],
+        });
+        console.log("📤 Test email sent:", info.response);
+        res.json({ success: true, message: "✅ Test email sent successfully", info });
+      } catch (err) {
+        console.error("❌ Email send error:", err);
+        res.status(500).json({ success: false, message: "Email failed", error: err.message });
+      }
     });
   } catch (err) {
     console.error("❌ Error in /api/test:", err);
-    res.status(500).json({ success: false, message: "Test email failed", error: err.message });
+    res.status(500).json({ success: false, message: "Test route error", error: err.message });
   }
 });
 
 // -----------------------------------------------
-// 🩺 MAIN SUBMIT ROUTE (sends real certificates)
+// 🩺 MAIN SUBMIT ROUTE — sends real certificates
 // -----------------------------------------------
 app.post("/api/submit", async (req, res) => {
   try {
     const data = req.body;
     console.log("📥 Received patient data:", data);
 
-    // Generate medical certificate PDF
     const doc = new PDFDocument();
     const filename = `medical_certificate_${Date.now()}.pdf`;
     const filepath = `./${filename}`;
@@ -96,10 +104,11 @@ app.post("/api/submit", async (req, res) => {
     doc.moveDown();
     doc.text(`Doctor Notes: ${data.doctorNote || "N/A"}`);
     doc.moveDown(2);
-    doc.fontSize(10).text("This certificate was issued by an AHPRA-registered Australian medical doctor.");
+    doc.fontSize(10).text(
+      "This certificate was issued by an AHPRA-registered Australian medical doctor."
+    );
     doc.end();
 
-    // When PDF finishes writing
     stream.on("finish", async () => {
       await transporter.sendMail({
         from: `"VividMedi" <${process.env.EMAIL_USER}>`,
@@ -121,10 +130,15 @@ app.post("/api/submit", async (req, res) => {
 // -----------------------------------------------
 // 🌐 HEALTH CHECK ROUTE
 // -----------------------------------------------
-app.get("/", (req, res) => res.send("✅ VividMedi Backend Running"));
+app.get("/", (req, res) => {
+  res.send("✅ VividMedi Backend Running");
+});
 
 // -----------------------------------------------
-// 🚀 START SERVER
+// 🚀 START SERVER (keep-alive + bind fix)
 // -----------------------------------------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  setInterval(() => console.log("⏱️ Keep-alive ping... still running"), 1000 * 60 * 5);
+});
