@@ -1,7 +1,7 @@
 // vividmedi-flow.js
 console.log("✅ vividmedi-flow.js loaded successfully");
 
-// Select all the form sections
+// Select all form sections
 const sections = document.querySelectorAll(".form-section");
 const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn");
@@ -9,30 +9,51 @@ const backButtons = document.querySelectorAll(".back-btn");
 
 let currentStep = 0;
 
-// Function to update the visible form section
+// ------------------------------
+// Show specific section
+// ------------------------------
 function showSection(index) {
   sections.forEach((sec, i) => {
     sec.classList.toggle("active", i === index);
   });
+
   progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
+
+  // ✅ Refresh certificate preview when entering Step 7
+  if (sections[index].querySelector("#certificatePreview")) {
+    updateCertificatePreview();
+  }
 }
 
 showSection(currentStep);
 
-// Handle Continue button clicks
+// ------------------------------
+// Handle Continue buttons
+// ------------------------------
 continueButtons.forEach((btn) => {
-  btn.addEventListener("click", async () => {
+  btn.addEventListener("click", async (e) => {
+    const currentSection = sections[currentStep];
+
+    // ✅ Prevent skipping when user clicks payment links
+    if (currentSection.querySelector(".payment-options")) {
+      console.log("🛑 Payment section active — not advancing automatically.");
+      return; // Stay here until they hit submit
+    }
+
+    // ✅ Only advance to next step when safe
     if (currentStep === sections.length - 2) {
-      // Final submit step (Payment → Submit)
-      handleSubmit();
+      await handleSubmit();
       return;
     }
+
     currentStep++;
     showSection(currentStep);
   });
 });
 
-// Handle Back button clicks
+// ------------------------------
+// Handle Back buttons
+// ------------------------------
 backButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     currentStep = Math.max(0, currentStep - 1);
@@ -40,14 +61,18 @@ backButtons.forEach((btn) => {
   });
 });
 
-// Handle "Other" leave field visibility
+// ------------------------------
+// Handle "Other" leave visibility
+// ------------------------------
 const otherRadio = document.getElementById("other");
 const otherLeaveField = document.getElementById("otherLeaveField");
+
 if (otherRadio) {
   otherRadio.addEventListener("change", () => {
     otherLeaveField.style.display = "block";
   });
 }
+
 document.querySelectorAll("input[name='leaveFrom']").forEach((radio) => {
   if (radio.id !== "other") {
     radio.addEventListener("change", () => {
@@ -56,7 +81,9 @@ document.querySelectorAll("input[name='leaveFrom']").forEach((radio) => {
   }
 });
 
+// ------------------------------
 // Validate leave dates
+// ------------------------------
 const fromDate = document.getElementById("fromDate");
 const toDate = document.getElementById("toDate");
 const dateError = document.getElementById("dateError");
@@ -80,7 +107,9 @@ if (fromDate && toDate) {
   });
 }
 
-// Handle form submission
+// ------------------------------
+// Form submission handler
+// ------------------------------
 async function handleSubmit() {
   const payload = {
     certType: document.querySelector("input[name='certType']:checked")?.value,
@@ -117,9 +146,7 @@ async function handleSubmit() {
       console.log("✅ Submission successful:", data);
       currentStep++;
       showSection(currentStep);
-
-      // Optionally show MEDC code in console for verification testing
-      console.log("🔢 Generated MEDC Code:", data.medcCode);
+      console.log("🔢 MEDC Code:", data.medcCode);
     } else {
       alert("❌ There was a problem submitting your request.");
     }
@@ -129,7 +156,9 @@ async function handleSubmit() {
   }
 }
 
-// Generate the live certificate preview
+// ------------------------------
+// Certificate Preview
+// ------------------------------
 function updateCertificatePreview() {
   const preview = document.getElementById("certificatePreview");
   if (!preview) return;
@@ -148,7 +177,7 @@ function updateCertificatePreview() {
   `;
 }
 
-// Update preview dynamically when user edits fields
+// Live update certificate preview
 document.querySelectorAll("input, textarea, select").forEach((el) => {
   el.addEventListener("input", updateCertificatePreview);
 });
