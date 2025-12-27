@@ -1,47 +1,82 @@
 // vividmedi-flow.js
 console.log("✅ vividmedi-flow.js loaded successfully");
 
-// Select all form sections
 const sections = document.querySelectorAll(".form-section");
 const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn");
 const backButtons = document.querySelectorAll(".back-btn");
+const paymentLinks = document.querySelectorAll(".payment-option");
+const submitBtn = document.getElementById("submitBtn");
 
 let currentStep = 0;
+let paymentInProgress = false;
 
-// ------------------------------
-// Show specific section
-// ------------------------------
+// ----------------------
+// Show section
+// ----------------------
 function showSection(index) {
-  sections.forEach((sec, i) => {
-    sec.classList.toggle("active", i === index);
-  });
-
+  sections.forEach((sec, i) => sec.classList.toggle("active", i === index));
   progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
 
-  // ✅ Refresh certificate preview when entering Step 7
-  if (sections[index].querySelector("#certificatePreview")) {
-    updateCertificatePreview();
-  }
+  if (sections[index].querySelector("#certificatePreview")) updateCertificatePreview();
 }
-
 showSection(currentStep);
 
-// ------------------------------
-// Handle Continue buttons
-// ------------------------------
+// ----------------------
+// Handle payment links
+// ----------------------
+paymentLinks.forEach((link) => {
+  link.addEventListener("click", (e) => {
+    paymentInProgress = true;
+    console.log("💳 Payment link clicked — waiting for user to return.");
+
+    // Temporarily show a message overlay
+    const msg = document.createElement("div");
+    msg.id = "payment-overlay";
+    msg.textContent = "Processing Payment... Please return after completing checkout.";
+    Object.assign(msg.style, {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(255,255,255,0.95)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: "1.2rem",
+      zIndex: 9999,
+      color: "#333",
+      textAlign: "center",
+      padding: "20px",
+    });
+    document.body.appendChild(msg);
+  });
+});
+
+// Detect when user returns to the tab (focus restored)
+window.addEventListener("focus", () => {
+  if (paymentInProgress) {
+    paymentInProgress = false;
+    console.log("✅ User returned from payment — unlocking submit.");
+    document.getElementById("payment-overlay")?.remove();
+    submitBtn.disabled = false;
+  }
+});
+
+// Disable submit until payment completed
+if (submitBtn) submitBtn.disabled = true;
+
+// ----------------------
+// Continue button logic
+// ----------------------
 continueButtons.forEach((btn) => {
-  btn.addEventListener("click", async (e) => {
-    const currentSection = sections[currentStep];
-
-    // ✅ Prevent skipping when user clicks payment links
-    if (currentSection.querySelector(".payment-options")) {
-      console.log("🛑 Payment section active — not advancing automatically.");
-      return; // Stay here until they hit submit
-    }
-
-    // ✅ Only advance to next step when safe
-    if (currentStep === sections.length - 2) {
+  btn.addEventListener("click", async () => {
+    if (btn.id === "submitBtn") {
+      if (paymentInProgress) {
+        alert("Please complete your payment first.");
+        return;
+      }
       await handleSubmit();
       return;
     }
@@ -51,9 +86,9 @@ continueButtons.forEach((btn) => {
   });
 });
 
-// ------------------------------
-// Handle Back buttons
-// ------------------------------
+// ----------------------
+// Back button logic
+// ----------------------
 backButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     currentStep = Math.max(0, currentStep - 1);
@@ -61,29 +96,23 @@ backButtons.forEach((btn) => {
   });
 });
 
-// ------------------------------
-// Handle "Other" leave visibility
-// ------------------------------
+// ----------------------
+// Handle “Other” leave
+// ----------------------
 const otherRadio = document.getElementById("other");
 const otherLeaveField = document.getElementById("otherLeaveField");
-
 if (otherRadio) {
-  otherRadio.addEventListener("change", () => {
-    otherLeaveField.style.display = "block";
-  });
+  otherRadio.addEventListener("change", () => (otherLeaveField.style.display = "block"));
 }
-
 document.querySelectorAll("input[name='leaveFrom']").forEach((radio) => {
   if (radio.id !== "other") {
-    radio.addEventListener("change", () => {
-      otherLeaveField.style.display = "none";
-    });
+    radio.addEventListener("change", () => (otherLeaveField.style.display = "none"));
   }
 });
 
-// ------------------------------
-// Validate leave dates
-// ------------------------------
+// ----------------------
+// Date validation
+// ----------------------
 const fromDate = document.getElementById("fromDate");
 const toDate = document.getElementById("toDate");
 const dateError = document.getElementById("dateError");
@@ -94,7 +123,6 @@ if (fromDate && toDate) {
     const end = new Date(toDate.value);
     const today = new Date();
     const diffDays = (end - start) / (1000 * 60 * 60 * 24);
-
     if (start < today.setDate(today.getDate() - 7)) {
       dateError.textContent = "Start date cannot be more than 7 days ago.";
       dateError.style.display = "block";
@@ -107,9 +135,9 @@ if (fromDate && toDate) {
   });
 }
 
-// ------------------------------
-// Form submission handler
-// ------------------------------
+// ----------------------
+// Form submission
+// ----------------------
 async function handleSubmit() {
   const payload = {
     certType: document.querySelector("input[name='certType']:checked")?.value,
@@ -141,12 +169,10 @@ async function handleSubmit() {
     });
 
     const data = await res.json();
-
     if (data.success) {
       console.log("✅ Submission successful:", data);
       currentStep++;
       showSection(currentStep);
-      console.log("🔢 MEDC Code:", data.medcCode);
     } else {
       alert("❌ There was a problem submitting your request.");
     }
@@ -156,9 +182,9 @@ async function handleSubmit() {
   }
 }
 
-// ------------------------------
-// Certificate Preview
-// ------------------------------
+// ----------------------
+// Live certificate preview
+// ----------------------
 function updateCertificatePreview() {
   const preview = document.getElementById("certificatePreview");
   if (!preview) return;
@@ -177,7 +203,6 @@ function updateCertificatePreview() {
   `;
 }
 
-// Live update certificate preview
-document.querySelectorAll("input, textarea, select").forEach((el) => {
-  el.addEventListener("input", updateCertificatePreview);
-});
+document.querySelectorAll("input, textarea, select").forEach((el) =>
+  el.addEventListener("input", updateCertificatePreview)
+);
