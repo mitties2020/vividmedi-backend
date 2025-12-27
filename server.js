@@ -7,7 +7,14 @@ import fs from "fs";
 import cors from "cors";
 
 const app = express();
-app.use(cors()); // ✅ Enables cross-origin access for your frontend
+
+// ✅ Restrict to your frontend domains only
+app.use(cors({
+  origin: ["https://vividmedi.onrender.com", "https://www.vividmedi.com", "https://vividmedi.com"],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 app.use(bodyParser.json());
 
 // ---------- Health Check ----------
@@ -23,22 +30,20 @@ app.post("/api/submit", async (req, res) => {
   console.log("📩 Patient submission received:");
   console.log(JSON.stringify(data, null, 2));
 
-  // Log submission to file (optional for debugging)
   try {
     fs.appendFileSync("submissions.log", `${timestamp} ${JSON.stringify(data)}\n`);
   } catch (e) {
     console.warn("⚠️ Could not write to log file:", e.message);
   }
 
-  // ---------- Brevo SMTP Setup ----------
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp-relay.brevo.com",
       port: 587,
       secure: false,
       auth: {
-        user: process.env.ADMIN_EMAIL,      // your Brevo verified sender email
-        pass: process.env.BREVO_API_KEY     // your Brevo API key
+        user: process.env.ADMIN_EMAIL,
+        pass: process.env.BREVO_API_KEY
       }
     });
 
@@ -46,9 +51,9 @@ app.post("/api/submit", async (req, res) => {
     const adminMail = {
       from: `"${process.env.ADMIN_NAME}" <${process.env.ADMIN_EMAIL}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: `🩺 New VividMedi Patient Submission - ${data.firstName} ${data.lastName}`,
+      subject: `🩺 New VividMedi Submission - ${data.firstName} ${data.lastName}`,
       html: `
-        <h2 style="color:#005bab;">🩺 New Patient Submission</h2>
+        <h2 style="color:#005bab;">🩺 New Medical Certificate Request</h2>
         <p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p>
         <p><strong>Email:</strong> ${data.email}</p>
         <p><strong>Reason:</strong> ${data.reason}</p>
@@ -62,16 +67,17 @@ app.post("/api/submit", async (req, res) => {
     await transporter.sendMail(adminMail);
     console.log("📤 Brevo email notification sent to admin!");
 
-    // ---------- Email confirmation to patient (optional) ----------
+    // ---------- Confirmation to Patient ----------
     if (data.email) {
       const patientMail = {
         from: `"${process.env.ADMIN_NAME}" <${process.env.ADMIN_EMAIL}>`,
         to: data.email,
-        subject: "✅ Your VividMedi medical certificate request has been received",
+        subject: "✅ VividMedi medical certificate request received",
         html: `
           <h2 style="color:#005bab;">Hi ${data.firstName},</h2>
-          <p>Thank you for submitting your medical certificate request.</p>
-          <p>A registered doctor is now reviewing your submission. You will be notified shortly if any further details are required.</p>
+          <p>Your medical certificate request has been received and is being reviewed by a registered doctor.</p>
+          <p>You’ll be notified shortly if any further details are needed.</p>
+          <p><strong>Requested Dates:</strong> ${data.fromDate} → ${data.toDate}</p>
           <hr>
           <p style="font-size:12px;color:#777;">Sent by VividMedi Health | ${new Date().toLocaleString()}</p>
         `
@@ -82,7 +88,7 @@ app.post("/api/submit", async (req, res) => {
     }
 
   } catch (error) {
-    console.error("⚠️ Failed to send email via Brevo:", error.message);
+    console.error("⚠️ Email send failed via Brevo:", error.message);
   }
 
   res.json({
