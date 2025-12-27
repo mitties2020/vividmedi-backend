@@ -3,22 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VividMedi | Verify Medical Certificate</title>
+  <title>VividMedi | Medical Certificate Request</title>
+
+  <!-- ✅ Global site tag (gtag.js) - Google Ads -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17835460692"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-17835460692');
+  </script>
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-    body{
-      background:#f9fbfc;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-      padding:40px 15px;
-      min-height:100vh;
-    }
-
+    body{background:#f9fbfc;display:flex;flex-direction:column;align-items:center;padding:40px 15px;}
     .header{text-align:center;margin-bottom:25px;}
     .brand{font-size:2.2rem;font-weight:600;color:#111;}
     .brand span{color:#4AA7FF;}
@@ -35,147 +34,222 @@
       font-weight:400;
       font-size:.9rem;
     }
+    .progress-wrapper{width:100%;max-width:600px;background:#e0e0e0;border-radius:10px;height:8px;margin:20px auto 30px;overflow:hidden;}
+    .progress-bar{height:8px;width:12.5%;background:linear-gradient(to right,#4AA7FF,#7BE8D9);transition:width .4s ease;}
+    .form-container{background:#fff;width:100%;max-width:600px;padding:35px;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.1);}
+    h2{text-align:center;font-size:1.4rem;margin-bottom:10px;}
+    p{text-align:center;color:#666;margin-bottom:25px;font-size:.95rem;}
+    .form-section{display:none;animation:fadeIn .3s ease;}
+    .form-section.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    label{display:block;margin:10px 0 5px;font-weight:500;}
+    .radio-section{margin-bottom:25px;}
+    .radio-group{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      row-gap:10px;
+      column-gap:8px;
+      align-items:center;
+      margin-bottom:20px;
+    }
+    .radio-group input[type=radio]{accent-color:#4AA7FF;transform:scale(1.2);}
+    .radio-group label{margin:0;font-weight:400;}
+    input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:1rem;}
+    textarea{resize:vertical;min-height:80px;}
+    .button-row{display:flex;justify-content:space-between;gap:10px;margin-top:25px;}
+    button{flex:1;padding:14px;border:none;border-radius:6px;font-weight:600;font-size:1rem;color:#fff;cursor:pointer;}
+    .continue-btn{background:linear-gradient(to right,#4AA7FF,#7BE8D9);}
+    .back-btn{background:#9daab3;}
+    .certificate-preview{background:#fffaf3;border:1px solid #e1d3b8;border-radius:10px;padding:20px;margin-bottom:20px;}
+    .payment-options{display:flex;flex-direction:column;gap:10px;margin:20px 0;}
+    .payment-option{border:2px solid #ccc;border-radius:10px;padding:15px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border-color .3s ease;text-decoration:none;color:#111;}
+    .payment-option:hover{border-color:#4AA7FF;background:#f0faff;}
+    small.note{display:block;text-align:center;margin-top:15px;color:#666;font-size:.9rem;}
+    .success-screen{text-align:center;padding:30px;}
+    .success-icon{font-size:4rem;color:#00b67a;margin-bottom:15px;}
 
-    .verify-container{
-      background:#fff;
-      width:100%;
-      max-width:600px;
-      padding:35px;
-      border-radius:16px;
-      box-shadow:0 6px 20px rgba(0,0,0,.08);
-      margin-top:25px;
+    /* ✅ Trust badges */
+    .guarantees{
+      margin:25px 0 0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:12px;
       text-align:center;
     }
-
-    h2{font-size:1.3rem;margin-bottom:10px;}
-    p{color:#555;font-size:.95rem;margin-bottom:20px;}
-
-    input{
-      width:100%;
-      padding:12px;
-      border:1px solid #ccc;
+    .guarantee-item{
+      flex:1 1 30%;
+      min-width:150px;
+      background:#f5fff7;
+      border:1px solid #cdeed3;
       border-radius:8px;
-      font-size:1rem;
-      margin-bottom:15px;
-      text-align:center;
-    }
-
-    button{
-      width:100%;
-      padding:14px;
-      border:none;
-      border-radius:8px;
-      background:linear-gradient(to right,#4AA7FF,#7BE8D9);
-      color:#fff;
-      font-weight:600;
-      font-size:1rem;
-      cursor:pointer;
-      transition:opacity .3s;
-    }
-    button:hover{opacity:0.9;}
-
-    .result{
-      margin-top:25px;
-      text-align:left;
-      border-radius:10px;
-      padding:15px;
-      background:#f9fafb;
-      border:1px solid #e0e0e0;
-      font-size:.95rem;
-      line-height:1.5;
-    }
-
-    .valid{border-color:#00b67a;background:#f5fff7;}
-    .invalid{border-color:#ff6b6b;background:#fff5f5;}
-    .back-link{
-      margin-top:25px;
-      display:inline-block;
-      color:#4AA7FF;
-      text-decoration:none;
+      padding:12px 8px;
+      color:#00b67a;
+      font-size:.9rem;
       font-weight:500;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:5px;
+      height:60px;
     }
-
-    .footer-note{
-      margin-top:50px;
-      font-size:.85rem;
-      color:#777;
-      text-align:center;
-    }
+    .guarantee-item span{font-size:1.1rem;}
   </style>
 </head>
 <body>
-
   <div class="header">
     <h1 class="brand">Vivid<span>Medi</span></h1>
     <p class="tagline">
       Medical Certificates — from payment to your inbox in under 15 minutes<br>
       <span>Reviewed & Issued by AHPRA-Registered Doctors<br>Accepted by Employers & Universities Australia-Wide</span>
     </p>
+    <div class="progress-wrapper"><div class="progress-bar"></div></div>
   </div>
 
-  <div class="verify-container">
-    <h2>Verify a Medical Certificate</h2>
-    <p>Enter the certificate number (e.g. <strong>MEDC123456</strong>) to confirm authenticity.</p>
-    <input type="text" id="codeInput" placeholder="Enter MEDC code" maxlength="10">
-    <button id="verifyBtn">Verify</button>
+  <div class="form-container">
+    <!-- STEP 1 -->
+    <div class="form-section active">
+      <h2>Medical Certificate Request</h2>
+      <p>
+        Please note: Our Medical Doctors are currently unable to review requests for fitness for work certificates as part of your consultation outcome. 
+        In line with best practice, we are also unable to issue Medical Certificates for periods longer than 5 days.
+      </p>
 
-    <div id="result" class="result" style="display:none;"></div>
+      <div class="radio-section">
+        <label>I am seeking *</label>
+        <div class="radio-group">
+          <input type="radio" id="sick" name="certType" value="Sick Leave" checked><label for="sick">Sick Leave</label>
+          <input type="radio" id="carer" name="certType" value="Carer's Leave"><label for="carer">Carer’s Leave</label>
+        </div>
+      </div>
 
-    <a href="/" class="back-link">← Back to Request Page</a>
+      <div class="radio-section">
+        <label>This leave is from *</label>
+        <div class="radio-group">
+          <input type="radio" id="work" name="leaveFrom" value="Work" checked><label for="work">Work</label>
+          <input type="radio" id="studies" name="leaveFrom" value="Studies"><label for="studies">Studies</label>
+          <input type="radio" id="other" name="leaveFrom" value="Other"><label for="other">Other</label>
+        </div>
+      </div>
+
+      <div id="otherLeaveField" style="display:none;margin-top:10px;">
+        <label>Please specify what this leave is for:</label>
+        <input type="text" id="otherLeave" placeholder="e.g. training, volunteer work">
+      </div>
+
+      <!-- ✅ TRUST BADGES -->
+      <div class="guarantees">
+        <div class="guarantee-item"><span>✔</span>Issued by AHPRA-Registered Doctors</div>
+        <div class="guarantee-item"><span>✔</span>Accepted by Employers & Universities</div>
+        <div class="guarantee-item"><span>✔</span>Same-Day Delivery &lt; 15 Minutes</div>
+      </div>
+
+      <div class="button-row"><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="form-section">
+      <h2>Reason for Leave</h2>
+      <p>Tell your doctor why you need this certificate.</p>
+      <div class="radio-group">
+        <input type="radio" name="reason" value="Common cold or flu" checked><label>Common cold or flu</label>
+        <input type="radio" name="reason" value="Headache"><label>Headache</label>
+        <input type="radio" name="reason" value="Migraine"><label>Migraine</label>
+        <input type="radio" name="reason" value="Back pain"><label>Back pain</label>
+        <input type="radio" name="reason" value="Period pain"><label>Period pain</label>
+        <input type="radio" name="reason" value="Anxiety, stress or depression"><label>Anxiety, stress or depression</label>
+        <input type="radio" name="reason" value="Other"><label>Other</label>
+      </div>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="form-section">
+      <h2>Personal Information</h2>
+      <label>Email *</label><input type="email" id="email" required>
+      <label>First Name *</label><input type="text" id="firstName" required>
+      <label>Last Name *</label><input type="text" id="lastName" required>
+      <label>Date of Birth *</label><input type="date" id="dob" required>
+      <label>Mobile Number *</label><input type="tel" id="mobile" placeholder="04XXXXXXXX" required>
+      <label>Gender *</label>
+      <div class="radio-group">
+        <input type="radio" name="gender" value="Male" checked><label>Male</label>
+        <input type="radio" name="gender" value="Female"><label>Female</label>
+      </div>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="form-section">
+      <h2>Address</h2>
+      <label>Street Address *</label><input type="text" id="address" required>
+      <label>City/Suburb *</label><input type="text" id="city" required>
+      <label>State *</label><select id="state" required>
+        <option value="">Select...</option>
+        <option>NSW</option><option>VIC</option><option>QLD</option><option>WA</option>
+        <option>SA</option><option>TAS</option><option>ACT</option><option>NT</option>
+      </select>
+      <label>Postcode *</label><input type="text" id="postcode" required>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="form-section">
+      <h2>Leave Dates</h2>
+      <p>Start date cannot be more than 7 days before today. Duration cannot exceed 5 days.</p>
+      <label>From *</label><input type="date" id="fromDate" required>
+      <label>To *</label><input type="date" id="toDate" required>
+      <p id="dateError" style="color:red;text-align:center;display:none;"></p>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="form-section">
+      <h2>Tell Your Doctor More</h2>
+      <p>Please describe your symptoms and upload any relevant documents.</p>
+      <textarea id="symptoms" placeholder="e.g. fever, sore throat, fatigue..."></textarea>
+      <label>Upload Files (optional)</label><input type="file" accept=".pdf,.jpg,.jpeg,.png">
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="form-section">
+      <h2>Review Your Details</h2>
+      <p>Please review your details before proceeding to payment.</p>
+      <div class="certificate-preview" id="certificatePreview"></div>
+      <label>Is there anything else you would like the doctor to know?</label>
+      <textarea id="doctorNote" placeholder="Additional notes..."></textarea>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn">Continue</button></div>
+    </div>
+
+    <!-- STEP 8 -->
+    <div class="form-section">
+      <h2>Payment</h2>
+      <p>Select your certificate duration to complete the request.</p>
+      <div class="payment-options">
+        <a href="https://square.link/u/IBwqrJ9s" target="_blank" class="payment-option"><span>1 Day</span><strong>$15 AUD</strong></a>
+        <a href="https://square.link/u/zAcyPAgn" target="_blank" class="payment-option"><span>2 Days</span><strong>$20 AUD</strong></a>
+        <a href="https://square.link/u/Yy0UMSHl" target="_blank" class="payment-option"><span>3 Days</span><strong>$25 AUD</strong></a>
+        <a href="https://square.link/u/cbKV3pjR" target="_blank" class="payment-option"><span>4 Days</span><strong>$35 AUD</strong></a>
+        <a href="https://square.link/u/aEwqH1pl" target="_blank" class="payment-option"><span>5 Days</span><strong>$50 AUD</strong></a>
+      </div>
+      <small class="note">Your information will now be reviewed by an AHPRA-registered medical doctor. Please keep your phone nearby in case we need to clarify any details.</small>
+      <div class="button-row"><button class="back-btn">Back</button><button class="continue-btn" id="submitBtn">Submit</button></div>
+    </div>
+
+    <!-- STEP 9 -->
+    <div class="form-section">
+      <div class="success-screen">
+        <div class="success-icon">✅</div>
+        <h2>Thank You!</h2>
+        <p>Your medical certificate request has been submitted.<br>
+        You’ll receive your certificate shortly after payment confirmation.<br>
+        Please keep your phone nearby in case one of our doctors needs to get in touch.</p>
+      </div>
+    </div>
   </div>
 
-  <p class="footer-note">© 2025 VividMedi. All certificates are verified against secure issuance records.</p>
-
-  <script>
-    const verifyBtn = document.getElementById('verifyBtn');
-    const codeInput = document.getElementById('codeInput');
-    const resultBox = document.getElementById('result');
-
-    verifyBtn.addEventListener('click', async () => {
-      const code = codeInput.value.trim().toUpperCase();
-      if (!code.startsWith("MEDC") || code.length !== 10) {
-        resultBox.style.display = 'block';
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = '<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).';
-        return;
-      }
-
-      resultBox.style.display = 'block';
-      resultBox.className = 'result';
-      resultBox.innerHTML = '⏳ Verifying... Please wait.';
-
-      try {
-        const response = await fetch(`/api/verify/${code}`);
-        if (!response.ok) throw new Error('Invalid or unrecognized code.');
-
-        const data = await response.json();
-
-        if (data.valid) {
-          const r = data.record;
-          resultBox.className = 'result valid';
-          resultBox.innerHTML = `
-            <strong>✅ Verified Certificate</strong><br><br>
-            <strong>Certificate ID:</strong> ${r.medcCode}<br>
-            <strong>Name:</strong> ${r.firstName} ${r.lastName}<br>
-            <strong>Certificate Type:</strong> ${r.certType}<br>
-            <strong>Reason:</strong> ${r.reason}<br>
-            <strong>Leave Dates:</strong> ${r.fromDate} → ${r.toDate}<br>
-            <strong>Issued:</strong> ${new Date(r.timestamp).toLocaleString()}<br><br>
-            <em>This certificate was issued by an AHPRA-registered medical practitioner and verified via VividMedi’s secure system.</em>
-          `;
-        } else {
-          resultBox.className = 'result invalid';
-          resultBox.innerHTML = '<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.';
-        }
-      } catch (err) {
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = `<strong>❌ Error:</strong> ${err.message}`;
-      }
-    });
-
-    codeInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') verifyBtn.click();
-    });
-  </script>
+  <script src="vividmedi-flow.js"></script>
 </body>
 </html>
