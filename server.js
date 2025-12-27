@@ -17,7 +17,7 @@ app.get("/", (req, res) => {
   res.send("✅ VividMedi backend running fine (Brevo email + CORS enabled)");
 });
 
-// ---------- TEST EMAIL (optional) ----------
+// ---------- TEST EMAIL ----------
 app.get("/api/test-email", async (req, res) => {
   try {
     const testEmail = {
@@ -54,7 +54,7 @@ app.get("/api/test-email", async (req, res) => {
 app.post("/api/submit", async (req, res) => {
   const data = req.body;
 
-  // ✅ Log to Render logs
+  // ✅ Log to Render console
   console.log("📩 New patient submission received:");
   console.log(JSON.stringify(data, null, 2));
 
@@ -64,12 +64,12 @@ app.post("/api/submit", async (req, res) => {
     if (err) console.error("❌ Error writing to log file:", err);
   });
 
-  // ✅ Send email to admin
+  // ✅ Send admin email via Brevo
   try {
     const emailBody = {
       sender: { name: "VividMedi System", email: ADMIN_EMAIL },
       to: [{ email: ADMIN_EMAIL, name: ADMIN_NAME }],
-      subject: `🩺 New VividMedi Patient Submission: ${data.firstName} ${data.lastName}`,
+      subject: `🩺 New VividMedi Submission: ${data.firstName} ${data.lastName}`,
       htmlContent: `
         <h2>New Patient Submission</h2>
         <p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p>
@@ -77,11 +77,11 @@ app.post("/api/submit", async (req, res) => {
         <p><strong>Reason:</strong> ${data.reason}</p>
         <p><strong>From:</strong> ${data.fromDate}</p>
         <p><strong>To:</strong> ${data.toDate}</p>
-        <p><strong>Type:</strong> ${data.certType}</p>
+        <p><strong>Certificate Type:</strong> ${data.certType}</p>
         <p><strong>Symptoms:</strong> ${data.symptoms || "N/A"}</p>
         <p><strong>Doctor Note:</strong> ${data.doctorNote || "None"}</p>
-        <hr>
-        <p><strong>Full JSON:</strong></p>
+        <hr />
+        <p><strong>Full JSON Data:</strong></p>
         <pre>${JSON.stringify(data, null, 2)}</pre>
       `,
     };
