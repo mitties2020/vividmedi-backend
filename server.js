@@ -10,7 +10,7 @@ app.use(express.json());
 // Environment variables
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "vividmedi.health@gmail.com";
 const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Admin";
-const BREVO_API_KEY = process.env.BREVO_API_KEY || "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";
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "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";
 
 // ---------- HEALTH CHECK ----------
 app.get("/", (req, res) => {
