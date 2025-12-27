@@ -7,14 +7,47 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Environment variables
+// ✅ Environment variables (loaded securely from Render)
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "vividmedi.health@gmail.com";
 const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Admin";
-const BREVO_API_KEY = process.env.BREVO_API_KEY || "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";
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 // ---------- HEALTH CHECK ----------
 app.get("/", (req, res) => {
   res.send("✅ VividMedi backend running fine (Brevo email + CORS enabled)");
+});
+
+// ---------- TEST EMAIL (optional) ----------
+app.get("/api/test-email", async (req, res) => {
+  try {
+    const testEmail = {
+      sender: { name: "VividMedi System", email: ADMIN_EMAIL },
+      to: [{ email: ADMIN_EMAIL, name: ADMIN_NAME }],
+      subject: "✅ VividMedi Test Email",
+      htmlContent: `<p>This is a test email from your VividMedi backend — everything is working fine!</p>`,
+    };
+
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": BREVO_API_KEY,
+      },
+      body: JSON.stringify(testEmail),
+    });
+
+    if (response.ok) {
+      console.log(`📧 Test email sent successfully to ${ADMIN_EMAIL}`);
+      res.send("✅ Test email sent successfully!");
+    } else {
+      const text = await response.text();
+      console.error("❌ Test email failed:", text);
+      res.status(500).send("❌ Test email failed: " + text);
+    }
+  } catch (err) {
+    console.error("❌ Error testing email:", err);
+    res.status(500).send("❌ Error testing email: " + err.message);
+  }
 });
 
 // ---------- API: SUBMIT ----------
@@ -31,7 +64,7 @@ app.post("/api/submit", async (req, res) => {
     if (err) console.error("❌ Error writing to log file:", err);
   });
 
-  // ✅ Email the admin via Brevo API
+  // ✅ Send email to admin
   try {
     const emailBody = {
       sender: { name: "VividMedi System", email: ADMIN_EMAIL },
@@ -47,9 +80,10 @@ app.post("/api/submit", async (req, res) => {
         <p><strong>Type:</strong> ${data.certType}</p>
         <p><strong>Symptoms:</strong> ${data.symptoms || "N/A"}</p>
         <p><strong>Doctor Note:</strong> ${data.doctorNote || "None"}</p>
+        <hr>
         <p><strong>Full JSON:</strong></p>
         <pre>${JSON.stringify(data, null, 2)}</pre>
-      `
+      `,
     };
 
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
