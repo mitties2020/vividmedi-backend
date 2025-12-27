@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import fetch from "node-fetch";
+import path from "path";
 
 const app = express();
 app.use(cors());
@@ -12,9 +13,31 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "vividmedi.health@gmail.com";
 const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Admin";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
+// ---------- Helper: Generate Unique Certificate Code ----------
+function generateCertCode() {
+  const STORAGE_PATH = path.join(process.cwd(), "certificates.json");
+
+  // Load existing codes
+  let existingCodes = [];
+  if (fs.existsSync(STORAGE_PATH)) {
+    const fileData = fs.readFileSync(STORAGE_PATH, "utf-8");
+    if (fileData.trim()) {
+      existingCodes = JSON.parse(fileData).map(c => c.certificateNumber);
+    }
+  }
+
+  // Generate a unique code
+  let newCode;
+  do {
+    newCode = "MEDC" + Math.floor(100000 + Math.random() * 900000);
+  } while (existingCodes.includes(newCode));
+
+  return newCode;
+}
+
 // ---------- HEALTH CHECK ----------
 app.get("/", (req, res) => {
-  res.send("✅ VividMedi backend running fine (Brevo email + CORS enabled)");
+  res.send("✅ VividMedi backend running fine (Brevo email + CORS enabled + Certificate Verification Active)");
 });
 
 // ---------- TEST EMAIL ----------
@@ -54,13 +77,31 @@ app.get("/api/test-email", async (req, res) => {
 app.post("/api/submit", async (req, res) => {
   const data = req.body;
 
-  // ✅ Log to Render console
-  console.log("📩 New patient submission received:");
-  console.log(JSON.stringify(data, null, 2));
+  // ✅ Assign a unique certificate code
+  const certificateNumber = generateCertCode();
 
-  // ✅ Save locally for record-keeping
-  const logLine = `${new Date().toISOString()} | ${JSON.stringify(data)}\n`;
-  fs.appendFile("submissions.log", logLine, (err) => {
+  // ✅ Add metadata
+  const certData = {
+    ...data,
+    certificateNumber,
+    issuedAt: new Date().toISOString(),
+  };
+
+  console.log("📩 New patient submission received:");
+  console.log(JSON.stringify(certData, null, 2));
+
+  // ✅ Save locally for verification
+  const certFile = path.join(process.cwd(), "certificates.json");
+  let existingCerts = [];
+  if (fs.existsSync(certFile)) {
+    const fileData = fs.readFileSync(certFile, "utf-8");
+    if (fileData.trim()) existingCerts = JSON.parse(fileData);
+  }
+  existingCerts.push(certData);
+  fs.writeFileSync(certFile, JSON.stringify(existingCerts, null, 2));
+
+  // ✅ Also save a text log
+  fs.appendFile("submissions.log", `${new Date().toISOString()} | ${JSON.stringify(certData)}\n`, (err) => {
     if (err) console.error("❌ Error writing to log file:", err);
   });
 
@@ -69,9 +110,10 @@ app.post("/api/submit", async (req, res) => {
     const emailBody = {
       sender: { name: "VividMedi System", email: ADMIN_EMAIL },
       to: [{ email: ADMIN_EMAIL, name: ADMIN_NAME }],
-      subject: `🩺 New VividMedi Submission: ${data.firstName} ${data.lastName}`,
+      subject: `🩺 New VividMedi Submission: ${data.firstName} ${data.lastName} (${certificateNumber})`,
       htmlContent: `
         <h2>New Patient Submission</h2>
+        <p><strong>Certificate Number:</strong> ${certificateNumber}</p>
         <p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p>
         <p><strong>Email:</strong> ${data.email}</p>
         <p><strong>Reason:</strong> ${data.reason}</p>
@@ -81,8 +123,10 @@ app.post("/api/submit", async (req, res) => {
         <p><strong>Symptoms:</strong> ${data.symptoms || "N/A"}</p>
         <p><strong>Doctor Note:</strong> ${data.doctorNote || "None"}</p>
         <hr />
-        <p><strong>Full JSON Data:</strong></p>
-        <pre>${JSON.stringify(data, null, 2)}</pre>
+        <p>This certificate can be verified at:</p>
+        <p><a href="https://vividmedi.com/verify/${certificateNumber}">https://vividmedi.com/verify/${certificateNumber}</a></p>
+        <hr />
+        <pre>${JSON.stringify(certData, null, 2)}</pre>
       `,
     };
 
@@ -107,7 +151,43 @@ app.post("/api/submit", async (req, res) => {
 
   res.json({
     success: true,
-    message: "✅ Patient details received and emailed to admin successfully.",
+    message: "✅ Patient details received, certificate generated, and stored for verification.",
+    certificateNumber,
+  });
+});
+
+// ---------- API: VERIFY CERTIFICATE ----------
+app.get("/api/verify/:certCode", (req, res) => {
+  const { certCode } = req.params;
+  const certFile = path.join(process.cwd(), "certificates.json");
+
+  if (!fs.existsSync(certFile)) {
+    return res.status(404).json({ valid: false, message: "No certificates found in database." });
+  }
+
+  const certs = JSON.parse(fs.readFileSync(certFile, "utf-8"));
+  const cert = certs.find(c => c.certificateNumber === certCode);
+
+  if (!cert) {
+    return res.status(404).json({ valid: false, message: "Certificate not found or invalid." });
+  }
+
+  res.json({
+    valid: true,
+    message: "✅ Verified Medical Certificate",
+    certificate: {
+      certificateNumber: cert.certificateNumber,
+      issuedAt: cert.issuedAt,
+      patient: `${cert.firstName} ${cert.lastName}`,
+      reason: cert.reason,
+      fromDate: cert.fromDate,
+      toDate: cert.toDate,
+      certType: cert.certType,
+      clinic: "VividMedi Clinic",
+      doctor: "Dr Michael",
+      qualifications: "Medical Doctorate",
+      ahpraNumber: "MED0002782709",
+    },
   });
 });
 
