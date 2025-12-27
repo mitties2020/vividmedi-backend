@@ -15,14 +15,13 @@ let currentStep = 0;
 let paymentClicked = false;
 
 // ------------------------------
-// Navigation logic
+// Show a specific section
 // ------------------------------
 function showSection(index) {
   sections.forEach((sec, i) => sec.classList.toggle("active", i === index));
   progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
   if (sections[index].querySelector("#certificatePreview")) updateCertificatePreview();
 }
-
 showSection(currentStep);
 
 // ------------------------------
@@ -30,8 +29,10 @@ showSection(currentStep);
 // ------------------------------
 continueButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
-    currentStep++;
-    showSection(currentStep);
+    if (currentStep < sections.length - 1) {
+      currentStep++;
+      showSection(currentStep);
+    }
   });
 });
 
@@ -46,14 +47,18 @@ backButtons.forEach((btn) => {
 });
 
 // ------------------------------
-// Handle Payment Links
+// Handle Payment Links properly
 // ------------------------------
 paymentLinks.forEach((link) => {
-  link.addEventListener("click", () => {
+  link.addEventListener("click", (e) => {
+    e.stopPropagation(); // Stop any inherited button behavior
     paymentClicked = true;
-    console.log("💳 Payment link clicked — user directed to Square.");
-    // Optionally display a brief message
-    alert("Once payment is complete, return here and click Submit to finish your request.");
+
+    // Open payment link in new tab
+    window.open(link.href, "_blank");
+
+    // DO NOT move to the next section automatically
+    alert("✅ Your payment window has opened. Please complete the payment, then return here and click Submit to finish.");
   });
 });
 
@@ -63,7 +68,7 @@ paymentLinks.forEach((link) => {
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
     if (!paymentClicked) {
-      alert("Please select a payment option before submitting.");
+      alert("Please complete your payment first.");
       return;
     }
     await handleSubmit();
@@ -71,48 +76,7 @@ if (submitBtn) {
 }
 
 // ------------------------------
-// Handle “Other” leave visibility
-// ------------------------------
-const otherRadio = document.getElementById("other");
-const otherLeaveField = document.getElementById("otherLeaveField");
-
-if (otherRadio) {
-  otherRadio.addEventListener("change", () => (otherLeaveField.style.display = "block"));
-}
-document.querySelectorAll("input[name='leaveFrom']").forEach((radio) => {
-  if (radio.id !== "other") {
-    radio.addEventListener("change", () => (otherLeaveField.style.display = "none"));
-  }
-});
-
-// ------------------------------
-// Validate Leave Dates
-// ------------------------------
-const fromDate = document.getElementById("fromDate");
-const toDate = document.getElementById("toDate");
-const dateError = document.getElementById("dateError");
-
-if (fromDate && toDate) {
-  toDate.addEventListener("change", () => {
-    const start = new Date(fromDate.value);
-    const end = new Date(toDate.value);
-    const today = new Date();
-    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
-
-    if (start < today.setDate(today.getDate() - 7)) {
-      dateError.textContent = "Start date cannot be more than 7 days ago.";
-      dateError.style.display = "block";
-    } else if (diffDays > 5) {
-      dateError.textContent = "Duration cannot exceed 5 days.";
-      dateError.style.display = "block";
-    } else {
-      dateError.style.display = "none";
-    }
-  });
-}
-
-// ------------------------------
-// Handle Form Submission
+// Form submission to backend
 // ------------------------------
 async function handleSubmit() {
   const payload = {
@@ -160,7 +124,7 @@ async function handleSubmit() {
 }
 
 // ------------------------------
-// Certificate Preview
+// Certificate preview updates live
 // ------------------------------
 function updateCertificatePreview() {
   const preview = document.getElementById("certificatePreview");
@@ -180,7 +144,6 @@ function updateCertificatePreview() {
   `;
 }
 
-// Auto-refresh preview
 document.querySelectorAll("input, textarea, select").forEach((el) =>
   el.addEventListener("input", updateCertificatePreview)
 );
