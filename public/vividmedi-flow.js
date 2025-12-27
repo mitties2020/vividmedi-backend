@@ -1,181 +1,154 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VividMedi | Verify Medical Certificate</title>
+// vividmedi-flow.js
+console.log("✅ vividmedi-flow.js loaded successfully");
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+// Select all the form sections
+const sections = document.querySelectorAll(".form-section");
+const progressBar = document.querySelector(".progress-bar");
+const continueButtons = document.querySelectorAll(".continue-btn");
+const backButtons = document.querySelectorAll(".back-btn");
 
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
-    body{
-      background:#f9fbfc;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:flex-start;
-      padding:40px 15px;
-      min-height:100vh;
+let currentStep = 0;
+
+// Function to update the visible form section
+function showSection(index) {
+  sections.forEach((sec, i) => {
+    sec.classList.toggle("active", i === index);
+  });
+  progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
+}
+
+showSection(currentStep);
+
+// Handle Continue button clicks
+continueButtons.forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (currentStep === sections.length - 2) {
+      // Final submit step (Payment → Submit)
+      handleSubmit();
+      return;
     }
+    currentStep++;
+    showSection(currentStep);
+  });
+});
 
-    .header{text-align:center;margin-bottom:25px;}
-    .brand{font-size:2.2rem;font-weight:600;color:#111;}
-    .brand span{color:#4AA7FF;}
-    .tagline{
-      margin-top:8px;
-      font-size:.95rem;
-      color:#111;
-      font-weight:500;
-      line-height:1.4;
+// Handle Back button clicks
+backButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    currentStep = Math.max(0, currentStep - 1);
+    showSection(currentStep);
+  });
+});
+
+// Handle "Other" leave field visibility
+const otherRadio = document.getElementById("other");
+const otherLeaveField = document.getElementById("otherLeaveField");
+if (otherRadio) {
+  otherRadio.addEventListener("change", () => {
+    otherLeaveField.style.display = "block";
+  });
+}
+document.querySelectorAll("input[name='leaveFrom']").forEach((radio) => {
+  if (radio.id !== "other") {
+    radio.addEventListener("change", () => {
+      otherLeaveField.style.display = "none";
+    });
+  }
+});
+
+// Validate leave dates
+const fromDate = document.getElementById("fromDate");
+const toDate = document.getElementById("toDate");
+const dateError = document.getElementById("dateError");
+
+if (fromDate && toDate) {
+  toDate.addEventListener("change", () => {
+    const start = new Date(fromDate.value);
+    const end = new Date(toDate.value);
+    const today = new Date();
+    const diffDays = (end - start) / (1000 * 60 * 60 * 24);
+
+    if (start < today.setDate(today.getDate() - 7)) {
+      dateError.textContent = "Start date cannot be more than 7 days ago.";
+      dateError.style.display = "block";
+    } else if (diffDays > 5) {
+      dateError.textContent = "Duration cannot exceed 5 days.";
+      dateError.style.display = "block";
+    } else {
+      dateError.style.display = "none";
     }
-    .tagline span{
-      display:block;
-      color:#555;
-      font-weight:400;
-      font-size:.9rem;
-    }
+  });
+}
 
-    .verify-container{
-      background:#fff;
-      width:100%;
-      max-width:600px;
-      padding:35px;
-      border-radius:16px;
-      box-shadow:0 6px 20px rgba(0,0,0,.08);
-      margin-top:25px;
-      text-align:center;
-    }
+// Handle form submission
+async function handleSubmit() {
+  const payload = {
+    certType: document.querySelector("input[name='certType']:checked")?.value,
+    leaveFrom: document.querySelector("input[name='leaveFrom']:checked")?.value,
+    reason: document.querySelector("input[name='reason']:checked")?.value,
+    email: document.getElementById("email")?.value,
+    firstName: document.getElementById("firstName")?.value,
+    lastName: document.getElementById("lastName")?.value,
+    dob: document.getElementById("dob")?.value,
+    mobile: document.getElementById("mobile")?.value,
+    gender: document.querySelector("input[name='gender']:checked")?.value,
+    address: document.getElementById("address")?.value,
+    city: document.getElementById("city")?.value,
+    state: document.getElementById("state")?.value,
+    postcode: document.getElementById("postcode")?.value,
+    fromDate: document.getElementById("fromDate")?.value,
+    toDate: document.getElementById("toDate")?.value,
+    symptoms: document.getElementById("symptoms")?.value,
+    doctorNote: document.getElementById("doctorNote")?.value,
+  };
 
-    h2{font-size:1.3rem;margin-bottom:10px;}
-    p{color:#555;font-size:.95rem;margin-bottom:20px;}
+  console.log("📤 Submitting data:", payload);
 
-    input{
-      width:100%;
-      padding:12px;
-      border:1px solid #ccc;
-      border-radius:8px;
-      font-size:1rem;
-      margin-bottom:15px;
-      text-align:center;
-    }
-
-    button{
-      width:100%;
-      padding:14px;
-      border:none;
-      border-radius:8px;
-      background:linear-gradient(to right,#4AA7FF,#7BE8D9);
-      color:#fff;
-      font-weight:600;
-      font-size:1rem;
-      cursor:pointer;
-      transition:opacity .3s;
-    }
-    button:hover{opacity:0.9;}
-
-    .result{
-      margin-top:25px;
-      text-align:left;
-      border-radius:10px;
-      padding:15px;
-      background:#f9fafb;
-      border:1px solid #e0e0e0;
-      font-size:.95rem;
-      line-height:1.5;
-    }
-
-    .valid{border-color:#00b67a;background:#f5fff7;}
-    .invalid{border-color:#ff6b6b;background:#fff5f5;}
-    .back-link{
-      margin-top:25px;
-      display:inline-block;
-      color:#4AA7FF;
-      text-decoration:none;
-      font-weight:500;
-    }
-
-    .footer-note{
-      margin-top:50px;
-      font-size:.85rem;
-      color:#777;
-      text-align:center;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="header">
-    <h1 class="brand">Vivid<span>Medi</span></h1>
-    <p class="tagline">
-      Medical Certificates — from payment to your inbox in under 15 minutes<br>
-      <span>Reviewed & Issued by AHPRA-Registered Doctors<br>Accepted by Employers & Universities Australia-Wide</span>
-    </p>
-  </div>
-
-  <div class="verify-container">
-    <h2>Verify a Medical Certificate</h2>
-    <p>Enter the certificate number (e.g. <strong>MEDC123456</strong>) to confirm authenticity.</p>
-    <input type="text" id="codeInput" placeholder="Enter MEDC code" maxlength="10">
-    <button id="verifyBtn">Verify</button>
-
-    <div id="result" class="result" style="display:none;"></div>
-
-    <a href="/" class="back-link">← Back to Request Page</a>
-  </div>
-
-  <p class="footer-note">© 2025 VividMedi. All certificates are verified against secure issuance records.</p>
-
-  <script>
-    const verifyBtn = document.getElementById('verifyBtn');
-    const codeInput = document.getElementById('codeInput');
-    const resultBox = document.getElementById('result');
-
-    verifyBtn.addEventListener('click', async () => {
-      const code = codeInput.value.trim().toUpperCase();
-      if (!code.startsWith("MEDC") || code.length !== 10) {
-        resultBox.style.display = 'block';
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = '<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).';
-        return;
-      }
-
-      resultBox.style.display = 'block';
-      resultBox.className = 'result';
-      resultBox.innerHTML = '⏳ Verifying... Please wait.';
-
-      try {
-        const response = await fetch(`/api/verify/${code}`);
-        if (!response.ok) throw new Error('Invalid or unrecognized code.');
-
-        const data = await response.json();
-
-        if (data.valid) {
-          const r = data.record;
-          resultBox.className = 'result valid';
-          resultBox.innerHTML = `
-            <strong>✅ Verified Certificate</strong><br><br>
-            <strong>Certificate ID:</strong> ${r.medcCode}<br>
-            <strong>Name:</strong> ${r.firstName} ${r.lastName}<br>
-            <strong>Certificate Type:</strong> ${r.certType}<br>
-            <strong>Reason:</strong> ${r.reason}<br>
-            <strong>Leave Dates:</strong> ${r.fromDate} → ${r.toDate}<br>
-            <strong>Issued:</strong> ${new Date(r.timestamp).toLocaleString()}<br><br>
-            <em>This certificate was issued by an AHPRA-registered medical practitioner and verified via VividMedi’s secure system.</em>
-          `;
-        } else {
-          resultBox.className = 'result invalid';
-          resultBox.innerHTML = '<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.';
-        }
-      } catch (err) {
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = `<strong>❌ Error:</strong> ${err.message}`;
-      }
+  try {
+    const res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
 
-    codeInput.addEventListener('keypress', e => {
-      if (e.key === 'Enter') verifyBtn.click();
-    });
-  </script>
-</body>
-</html>
+    const data = await res.json();
+
+    if (data.success) {
+      console.log("✅ Submission successful:", data);
+      currentStep++;
+      showSection(currentStep);
+
+      // Optionally show MEDC code in console for verification testing
+      console.log("🔢 Generated MEDC Code:", data.medcCode);
+    } else {
+      alert("❌ There was a problem submitting your request.");
+    }
+  } catch (err) {
+    console.error("❌ Submission error:", err);
+    alert("Network error: Unable to reach the server.");
+  }
+}
+
+// Generate the live certificate preview
+function updateCertificatePreview() {
+  const preview = document.getElementById("certificatePreview");
+  if (!preview) return;
+
+  const certType = document.querySelector("input[name='certType']:checked")?.value;
+  const firstName = document.getElementById("firstName")?.value || "First Name";
+  const lastName = document.getElementById("lastName")?.value || "Last Name";
+  const fromDateVal = document.getElementById("fromDate")?.value;
+  const toDateVal = document.getElementById("toDate")?.value;
+
+  preview.innerHTML = `
+    <strong>Type:</strong> ${certType}<br>
+    <strong>Name:</strong> ${firstName} ${lastName}<br>
+    <strong>From:</strong> ${fromDateVal || "-"}<br>
+    <strong>To:</strong> ${toDateVal || "-"}
+  `;
+}
+
+// Update preview dynamically when user edits fields
+document.querySelectorAll("input, textarea, select").forEach((el) => {
+  el.addEventListener("input", updateCertificatePreview);
+});
