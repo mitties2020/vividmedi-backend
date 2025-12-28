@@ -9,8 +9,8 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ Environment variables (loaded securely from Render)
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "vividmedi.health@gmail.com";
-const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Admin";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "support@vividmedi.com";
+const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Support";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 // ---------- Helper: Generate Unique Certificate Code ----------
