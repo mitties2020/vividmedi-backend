@@ -1,4 +1,4 @@
-// vividmedi-flow.js
+// vividmedi-flow.js — FINAL FIXED VERSION
 console.log("✅ vividmedi-flow.js loaded successfully");
 
 // ------------------------------
@@ -47,18 +47,49 @@ backButtons.forEach((btn) => {
 });
 
 // ------------------------------
+// Create loading overlay
+// ------------------------------
+const overlay = document.createElement("div");
+overlay.style.cssText = `
+  position: fixed;
+  top:0;left:0;width:100%;height:100%;
+  background:rgba(255,255,255,0.8);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  font-size:1.2rem;
+  color:#333;
+  z-index:9999;
+`;
+overlay.innerHTML = "Opening secure payment...";
+document.body.appendChild(overlay);
+
+// ------------------------------
 // Handle Payment Links properly
 // ------------------------------
 paymentLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
-    e.stopPropagation(); // Stop any inherited button behavior
-    paymentClicked = true;
+    e.preventDefault();
+    e.stopPropagation();
 
-    // Open payment link in new tab
-    window.open(link.href, "_blank");
+    overlay.style.display = "flex";
 
-    // DO NOT move to the next section automatically
-    alert("✅ Your payment window has opened. Please complete the payment, then return here and click Submit to finish.");
+    try {
+      const paymentWindow = window.open(link.href, "_blank");
+      if (paymentWindow) {
+        paymentClicked = true;
+        setTimeout(() => {
+          overlay.style.display = "none";
+          alert("✅ Your payment window has opened. Please complete payment, then return and click Submit.");
+        }, 1500);
+      } else {
+        overlay.style.display = "none";
+        alert("⚠️ Please allow pop-ups for this site to open the payment window.");
+      }
+    } catch (err) {
+      overlay.style.display = "none";
+      console.error("❌ Payment link error:", err);
+    }
   });
 });
 
@@ -68,7 +99,7 @@ paymentLinks.forEach((link) => {
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
     if (!paymentClicked) {
-      alert("Please complete your payment first.");
+      alert("⚠️ Please complete your payment before submitting.");
       return;
     }
     await handleSubmit();
