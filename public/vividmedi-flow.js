@@ -1,9 +1,6 @@
-// vividmedi-flow.js — FINAL FIXED VERSION
+// vividmedi-flow.js — Square Payment + Step 9 FIX
 console.log("✅ vividmedi-flow.js loaded successfully");
 
-// ------------------------------
-// DOM elements
-// ------------------------------
 const sections = document.querySelectorAll(".form-section");
 const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn:not(#submitBtn)");
@@ -12,20 +9,19 @@ const submitBtn = document.getElementById("submitBtn");
 const paymentLinks = document.querySelectorAll(".payment-option");
 
 let currentStep = 0;
-let paymentClicked = false;
+let paymentStarted = false;
 
 // ------------------------------
-// Show a specific section
+// Show section
 // ------------------------------
 function showSection(index) {
   sections.forEach((sec, i) => sec.classList.toggle("active", i === index));
   progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
-  if (sections[index].querySelector("#certificatePreview")) updateCertificatePreview();
 }
 showSection(currentStep);
 
 // ------------------------------
-// Handle normal "Continue" buttons
+// Continue buttons
 // ------------------------------
 continueButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -37,7 +33,7 @@ continueButtons.forEach((btn) => {
 });
 
 // ------------------------------
-// Handle Back buttons
+// Back buttons
 // ------------------------------
 backButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -47,7 +43,7 @@ backButtons.forEach((btn) => {
 });
 
 // ------------------------------
-// Create loading overlay
+// Payment overlay
 // ------------------------------
 const overlay = document.createElement("div");
 overlay.style.cssText = `
@@ -58,48 +54,49 @@ overlay.style.cssText = `
   align-items:center;
   justify-content:center;
   font-size:1.2rem;
-  color:#333;
+  color:#111;
   z-index:9999;
 `;
-overlay.innerHTML = "Opening secure payment...";
+overlay.innerHTML = "Processing payment... please wait";
 document.body.appendChild(overlay);
 
 // ------------------------------
-// Handle Payment Links properly
+// Payment link click
 // ------------------------------
 paymentLinks.forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
-    e.stopPropagation();
 
     overlay.style.display = "flex";
+    const paymentUrl = link.getAttribute("href");
 
     try {
-      const paymentWindow = window.open(link.href, "_blank");
-      if (paymentWindow) {
-        paymentClicked = true;
+      const popup = window.open(paymentUrl, "_blank");
+      if (popup) {
+        paymentStarted = true;
         setTimeout(() => {
           overlay.style.display = "none";
-          alert("✅ Your payment window has opened. Please complete payment, then return and click Submit.");
-        }, 1500);
+          alert("✅ Payment window opened. Please complete payment and return here to click Submit.");
+        }, 1000);
       } else {
         overlay.style.display = "none";
         alert("⚠️ Please allow pop-ups for this site to open the payment window.");
       }
     } catch (err) {
       overlay.style.display = "none";
-      console.error("❌ Payment link error:", err);
+      alert("❌ Error opening payment window. Please try again.");
+      console.error(err);
     }
   });
 });
 
 // ------------------------------
-// Handle Submit button only
+// Submit handler
 // ------------------------------
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
-    if (!paymentClicked) {
-      alert("⚠️ Please complete your payment before submitting.");
+    if (!paymentStarted) {
+      alert("⚠️ Please complete payment before submitting.");
       return;
     }
     await handleSubmit();
@@ -107,7 +104,7 @@ if (submitBtn) {
 }
 
 // ------------------------------
-// Form submission to backend
+// Submit to backend
 // ------------------------------
 async function handleSubmit() {
   const payload = {
@@ -130,8 +127,6 @@ async function handleSubmit() {
     doctorNote: document.getElementById("doctorNote")?.value,
   };
 
-  console.log("📤 Submitting data:", payload);
-
   try {
     const res = await fetch("/api/submit", {
       method: "POST",
@@ -140,41 +135,15 @@ async function handleSubmit() {
     });
 
     const data = await res.json();
-
     if (data.success) {
-      console.log("✅ Submission successful:", data);
       currentStep++;
       showSection(currentStep);
+      console.log("✅ Submission success:", data);
     } else {
-      alert("❌ There was a problem submitting your request.");
+      alert("❌ Submission failed. Please retry.");
     }
   } catch (err) {
-    console.error("❌ Submission error:", err);
-    alert("Network error: Unable to reach the server.");
+    console.error("❌ Error submitting form:", err);
+    alert("❌ Network issue. Please retry.");
   }
 }
-
-// ------------------------------
-// Certificate preview updates live
-// ------------------------------
-function updateCertificatePreview() {
-  const preview = document.getElementById("certificatePreview");
-  if (!preview) return;
-
-  const certType = document.querySelector("input[name='certType']:checked")?.value;
-  const firstName = document.getElementById("firstName")?.value || "First Name";
-  const lastName = document.getElementById("lastName")?.value || "Last Name";
-  const fromDateVal = document.getElementById("fromDate")?.value;
-  const toDateVal = document.getElementById("toDate")?.value;
-
-  preview.innerHTML = `
-    <strong>Type:</strong> ${certType}<br>
-    <strong>Name:</strong> ${firstName} ${lastName}<br>
-    <strong>From:</strong> ${fromDateVal || "-"}<br>
-    <strong>To:</strong> ${toDateVal || "-"}
-  `;
-}
-
-document.querySelectorAll("input, textarea, select").forEach((el) =>
-  el.addEventListener("input", updateCertificatePreview)
-);
