@@ -1,4 +1,16 @@
-import express from "express";
+import express from "express";// 🔐 FORCE canonical domain redirect (onrender.com → vividmedi.com)
+app.use((req, res, next) => {
+  const host = (req.headers.host || "").toLowerCase();
+  if (host.includes("onrender.com")) {
+    return res.redirect(
+      301,
+      "https://vividmedi.com" + req.originalUrl
+    );
+  }
+
+  next();
+});
+
 import cors from "cors";
 import fs from "fs";
 import fetch from "node-fetch";
