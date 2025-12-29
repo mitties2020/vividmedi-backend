@@ -1,4 +1,4 @@
-// vividmedi-flow.js — Email on Step 7 Continue (one page earlier)
+// vividmedi-flow.js — Email on Step 7 Continue (Render backend)
 console.log("✅ vividmedi-flow.js loaded successfully");
 
 const sections = document.querySelectorAll(".form-section");
@@ -6,16 +6,14 @@ const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn:not(#submitBtn)");
 const backButtons = document.querySelectorAll(".back-btn");
 
-// Payment buttons in your HTML are .payment-btn with data-link
+// Your HTML uses .payment-btn buttons with data-link
 const paymentButtons = document.querySelectorAll(".payment-btn");
 
 let currentStep = 0;
 let paymentStarted = false;
 
-// ✅ configure submit URL
-// If frontend + backend are different domains, set this to your Render backend:
-// const SUBMIT_URL = "https://YOUR-RENDER-APP.onrender.com/api/submit";
-const SUBMIT_URL = "/api/submit";
+// ✅ Your Render backend endpoint
+const SUBMIT_URL = "https://vividmedi-backend.onrender.com/api/submit";
 
 // ✅ prevent duplicate submission emails
 let submissionSent = false;
@@ -31,7 +29,7 @@ function showSection(index) {
 showSection(currentStep);
 
 // ------------------------------
-// Payment overlay
+// Overlay
 // ------------------------------
 const overlay = document.createElement("div");
 overlay.style.cssText = `
@@ -74,14 +72,14 @@ function buildPayload() {
 }
 
 // ------------------------------
-// Submit to backend (send email)
+// Submit to backend once (emails you via Brevo)
 // ------------------------------
 async function sendSubmissionOnce() {
-  if (submissionSent) return submissionResult; // already sent successfully
+  if (submissionSent) return submissionResult;
 
   const payload = buildPayload();
 
-  // (Optional) basic safety check so you don't email blanks
+  // basic guard so you don't email blanks
   if (!payload.email || !payload.firstName || !payload.lastName || !payload.fromDate || !payload.toDate) {
     throw new Error("Missing required fields (email/name/dates).");
   }
@@ -95,7 +93,7 @@ async function sendSubmissionOnce() {
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
 
   overlay.style.display = "none";
 
@@ -105,7 +103,7 @@ async function sendSubmissionOnce() {
 
   submissionSent = true;
   submissionResult = data; // contains certificateNumber etc.
-  console.log("✅ Submission sent (Step 7):", data);
+  console.log("✅ Submission sent on Step 7:", data);
   return data;
 }
 
@@ -114,9 +112,8 @@ async function sendSubmissionOnce() {
 // ------------------------------
 continueButtons.forEach((btn) => {
   btn.addEventListener("click", async () => {
-    // ✅ If we are on Step 7 (index 6), send submission before moving to Step 8
-    // Steps are 0-based:
-    // 0=Step1, 1=Step2, 2=Step3, 3=Step4, 4=Step5, 5=Step6, 6=Step7, 7=Step8, 8=Step9
+    // 0-based steps:
+    // 0=Step1,1=Step2,2=Step3,3=Step4,4=Step5,5=Step6,6=Step7,7=Step8,8=Step9
     if (currentStep === 6) {
       try {
         await sendSubmissionOnce();
@@ -181,8 +178,7 @@ paymentButtons.forEach((btn) => {
 });
 
 // ------------------------------
-// OPTIONAL: If you still have a #submitBtn somewhere, disable it
-// (since submission is now Step 7)
+// If you still have a #submitBtn somewhere, hide it (no longer needed)
 // ------------------------------
 const submitBtn = document.getElementById("submitBtn");
 if (submitBtn) {
