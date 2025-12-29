@@ -1,5 +1,5 @@
+alert("vividmedi-flow.js IS LOADING");
 console.log("✅ vividmedi-flow.js loaded successfully (DEBUG)");
-
 const sections = document.querySelectorAll(".form-section");
 const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn:not(#submitBtn)");
