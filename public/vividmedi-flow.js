@@ -58,7 +58,7 @@ function generateCertCode() {
   if (fs.existsSync(STORAGE_PATH)) {
     const fileData = fs.readFileSync(STORAGE_PATH, "utf-8");
     if (fileData.trim()) {
-      existingCodes = JSON.parse(fileData).map(c => c.certificateNumber);
+      existingCodes = JSON.parse(fileData).map((c) => c.certificateNumber);
     }
   }
 
@@ -92,7 +92,7 @@ app.post("/api/submit", async (req, res) => {
   };
 
   console.log("📩 New patient submission:");
-  console.log(certData);
+  console.log(JSON.stringify(certData, null, 2));
 
   // ----------------
   // SAVE LOCALLY
@@ -112,42 +112,51 @@ app.post("/api/submit", async (req, res) => {
   );
 
   // ----------------
-  // SEND EMAIL
+  // SEND EMAIL (FULL DETAILS + RAW JSON)
   // ----------------
   try {
-    const age = data.dob
-      ? Math.floor(
-          (Date.now() - new Date(data.dob).getTime()) /
-            (365.25 * 24 * 60 * 60 * 1000)
-        )
-      : "N/A";
+    const dob = data.dob || "N/A";
+    const age =
+      data.dob && !isNaN(new Date(data.dob).getTime())
+        ? Math.floor(
+            (Date.now() - new Date(data.dob).getTime()) /
+              (365.25 * 24 * 60 * 60 * 1000)
+          )
+        : "N/A";
 
     const emailBody = {
       sender: { name: "VividMedi System", email: ADMIN_EMAIL },
       to: [{ email: ADMIN_EMAIL, name: ADMIN_NAME }],
-      subject: `🩺 New VividMedi Submission – ${data.firstName} ${data.lastName} (${certificateNumber})`,
+      subject: `🩺 New VividMedi Submission – ${data.firstName || ""} ${data.lastName || ""} (${certificateNumber})`,
       htmlContent: `
         <h2>New Medical Certificate Request</h2>
 
+        <h3>✅ What the backend RECEIVED (raw JSON)</h3>
+        <pre style="white-space:pre-wrap;border:1px solid #ddd;padding:10px;border-radius:8px;">
+${JSON.stringify(certData, null, 2)}
+        </pre>
+
         <h3>Patient Details</h3>
-        <p><strong>Name:</strong> ${data.firstName} ${data.lastName}</p>
-        <p><strong>Email:</strong> ${data.email}</p>
+        <p><strong>Name:</strong> ${data.firstName || "N/A"} ${data.lastName || ""}</p>
+        <p><strong>Email:</strong> ${data.email || "N/A"}</p>
         <p><strong>Mobile:</strong> ${data.mobile || "N/A"}</p>
-        <p><strong>DOB:</strong> ${data.dob || "N/A"}</p>
+        <p><strong>DOB:</strong> ${dob}</p>
         <p><strong>Age:</strong> ${age}</p>
         <p><strong>Gender:</strong> ${data.gender || "N/A"}</p>
 
         <h3>Address</h3>
-        <p>${data.address || "N/A"}</p>
-        <p>${data.city || ""} ${data.state || ""} ${data.postcode || ""}</p>
+        <p><strong>Street:</strong> ${data.address || "N/A"}</p>
+        <p><strong>City/Suburb:</strong> ${data.city || "N/A"}</p>
+        <p><strong>State:</strong> ${data.state || "N/A"}</p>
+        <p><strong>Postcode:</strong> ${data.postcode || "N/A"}</p>
 
         <h3>Certificate Request</h3>
-        <p><strong>Certificate Type:</strong> ${data.certType}</p>
-        <p><strong>Leave From:</strong> ${data.leaveFrom}
-          ${data.leaveFrom === "Other" && data.otherLeave ? `(${data.otherLeave})` : ""}
-        </p>
-        <p><strong>Reason:</strong> ${data.reason}</p>
-        <p><strong>Dates:</strong> ${data.fromDate} → ${data.toDate}</p>
+        <p><strong>Certificate Type:</strong> ${data.certType || "N/A"}</p>
+        <p><strong>Leave From:</strong> ${data.leaveFrom || "N/A"} ${
+          data.leaveFrom === "Other" && data.otherLeave ? `(${data.otherLeave})` : ""
+        }</p>
+        <p><strong>Reason:</strong> ${data.reason || "N/A"}</p>
+        <p><strong>Dates:</strong> ${data.fromDate || "N/A"} → ${data.toDate || "N/A"}</p>
         <p><strong>Symptoms:</strong> ${data.symptoms || "N/A"}</p>
         <p><strong>Doctor Note:</strong> ${data.doctorNote || "None"}</p>
 
@@ -159,16 +168,10 @@ app.post("/api/submit", async (req, res) => {
             https://vividmedi.com/verify/${certificateNumber}
           </a>
         </p>
-
-        <hr />
-        <details>
-          <summary>Raw submission data</summary>
-          <pre style="white-space:pre-wrap">${JSON.stringify(certData, null, 2)}</pre>
-        </details>
       `,
     };
 
-    await fetch("https://api.brevo.com/v3/smtp/email", {
+    const resp = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -176,6 +179,11 @@ app.post("/api/submit", async (req, res) => {
       },
       body: JSON.stringify(emailBody),
     });
+
+    if (!resp.ok) {
+      const t = await resp.text();
+      console.error("❌ Brevo error:", t);
+    }
   } catch (err) {
     console.error("❌ Email send error:", err);
   }
@@ -197,7 +205,7 @@ app.get("/api/verify/:certCode", (req, res) => {
   }
 
   const certs = JSON.parse(fs.readFileSync(certFile, "utf-8"));
-  const cert = certs.find(c => c.certificateNumber === req.params.certCode);
+  const cert = certs.find((c) => c.certificateNumber === req.params.certCode);
 
   if (!cert) {
     return res.status(404).json({ valid: false });
