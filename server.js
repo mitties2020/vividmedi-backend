@@ -17,19 +17,43 @@ app.use((req, res, next) => {
   const host = (req.headers.host || "").toLowerCase();
 
   if (host.includes("onrender.com")) {
-    return res.redirect(
-      301,
-      "https://vividmedi.com" + req.originalUrl
-    );
+    return res.redirect(301, "https://vividmedi.com" + req.originalUrl);
   }
 
   next();
 });
 
 // ================================
+// ✅ FIX: CORS + PREFLIGHT (IMPORTANT)
+// Allows calls from vividmedi.com + www + onrender + local dev
+// ================================
+const allowedOrigins = [
+  "https://vividmedi.com",
+  "https://www.vividmedi.com",
+  "https://vividmedi.onrender.com",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
+app.use(
+  cors({
+    origin: function (origin, cb) {
+      // allow server-to-server / curl / same-origin with no Origin header
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error("CORS blocked: " + origin));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
+
+// ✅ answer preflight requests (this is what was hanging you)
+app.options("*", cors());
+
+// ================================
 // MIDDLEWARE
 // ================================
-app.use(cors());
 app.use(express.json());
 
 // ================================
@@ -49,7 +73,7 @@ function generateCertCode() {
   if (fs.existsSync(STORAGE_PATH)) {
     const fileData = fs.readFileSync(STORAGE_PATH, "utf-8");
     if (fileData.trim()) {
-      existingCodes = JSON.parse(fileData).map(c => c.certificateNumber);
+      existingCodes = JSON.parse(fileData).map((c) => c.certificateNumber);
     }
   }
 
@@ -183,7 +207,7 @@ app.get("/api/verify/:certCode", (req, res) => {
   }
 
   const certs = JSON.parse(fs.readFileSync(certFile, "utf-8"));
-  const cert = certs.find(c => c.certificateNumber === req.params.certCode);
+  const cert = certs.find((c) => c.certificateNumber === req.params.certCode);
 
   if (!cert) {
     return res.status(404).json({ valid: false });
