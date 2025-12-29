@@ -10,35 +10,26 @@ import path from "path";
 const app = express();
 
 // ================================
-// 🔐 FORCE CANONICAL DOMAIN
-// onrender.com → vividmedi.com
+// ✅ FIX: DO NOT REDIRECT OPTIONS (CORS PREFLIGHT)
+// Prefetch OPTIONS must return 200, not 301
 // ================================
 app.use((req, res, next) => {
-  const host = (req.headers.host || "").toLowerCase();
-
-  if (host.includes("onrender.com")) {
-    return res.redirect(301, "https://vividmedi.com" + req.originalUrl);
-  }
-
+  if (req.method === "OPTIONS") return next(); // ✅ never redirect preflight
   next();
 });
 
 // ================================
-// ✅ FIX: CORS + PREFLIGHT (IMPORTANT)
-// Allows calls from vividmedi.com + www + onrender + local dev
+// ✅ FIX: CORS + PREFLIGHT
 // ================================
 const allowedOrigins = [
   "https://vividmedi.com",
   "https://www.vividmedi.com",
   "https://vividmedi.onrender.com",
-  "http://localhost:3000",
-  "http://localhost:5173",
 ];
 
 app.use(
   cors({
     origin: function (origin, cb) {
-      // allow server-to-server / curl / same-origin with no Origin header
       if (!origin) return cb(null, true);
       if (allowedOrigins.includes(origin)) return cb(null, true);
       return cb(new Error("CORS blocked: " + origin));
@@ -48,7 +39,7 @@ app.use(
   })
 );
 
-// ✅ answer preflight requests (this is what was hanging you)
+// ✅ MUST answer preflight requests
 app.options("*", cors());
 
 // ================================
@@ -89,7 +80,7 @@ function generateCertCode() {
 // HEALTH CHECK
 // ================================
 app.get("/", (req, res) => {
-  res.send("✅ VividMedi backend running (canonical redirect active)");
+  res.send("✅ VividMedi backend running (CORS + preflight OK)");
 });
 
 // ================================
