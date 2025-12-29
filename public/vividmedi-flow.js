@@ -1,54 +1,34 @@
-// vividmedi-flow.js — Email on Step 7 Continue (Render backend)
-console.log("✅ vividmedi-flow.js loaded successfully");
+console.log("✅ vividmedi-flow.js loaded successfully (DEBUG)");
 
 const sections = document.querySelectorAll(".form-section");
 const progressBar = document.querySelector(".progress-bar");
 const continueButtons = document.querySelectorAll(".continue-btn:not(#submitBtn)");
 const backButtons = document.querySelectorAll(".back-btn");
-
-// Your HTML uses .payment-btn buttons with data-link
 const paymentButtons = document.querySelectorAll(".payment-btn");
 
 let currentStep = 0;
-let paymentStarted = false;
 
-// ✅ Your Render backend endpoint
 const SUBMIT_URL = "https://vividmedi-backend.onrender.com/api/submit";
-
-// ✅ prevent duplicate submission emails
 let submissionSent = false;
-let submissionResult = null;
 
-// ------------------------------
-// Show section
-// ------------------------------
 function showSection(index) {
   sections.forEach((sec, i) => sec.classList.toggle("active", i === index));
   progressBar.style.width = `${((index + 1) / sections.length) * 100}%`;
+  console.log("➡️ showSection:", index, "of", sections.length);
 }
 showSection(currentStep);
 
-// ------------------------------
 // Overlay
-// ------------------------------
 const overlay = document.createElement("div");
 overlay.style.cssText = `
-  position: fixed;
-  top:0;left:0;width:100%;height:100%;
-  background:rgba(255,255,255,0.8);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  font-size:1.2rem;
-  color:#111;
-  z-index:9999;
+  position: fixed; top:0;left:0;width:100%;height:100%;
+  background:rgba(255,255,255,0.85);
+  display:none; align-items:center; justify-content:center;
+  font-size:1.1rem; color:#111; z-index:9999;
 `;
-overlay.innerHTML = "Processing... please wait";
+overlay.textContent = "Working...";
 document.body.appendChild(overlay);
 
-// ------------------------------
-// Build payload from form
-// ------------------------------
 function buildPayload() {
   return {
     certType: document.querySelector("input[name='certType']:checked")?.value,
@@ -71,56 +51,67 @@ function buildPayload() {
   };
 }
 
-// ------------------------------
-// Submit to backend once (emails you via Brevo)
-// ------------------------------
 async function sendSubmissionOnce() {
-  if (submissionSent) return submissionResult;
-
-  const payload = buildPayload();
-
-  // basic guard so you don't email blanks
-  if (!payload.email || !payload.firstName || !payload.lastName || !payload.fromDate || !payload.toDate) {
-    throw new Error("Missing required fields (email/name/dates).");
+  if (submissionSent) {
+    console.log("ℹ️ Submission already sent. Skipping.");
+    return;
   }
 
-  overlay.innerHTML = "Submitting your details...";
+  const payload = buildPayload();
+  console.log("📦 Payload about to send:", payload);
+
+  overlay.textContent = "Submitting details...";
   overlay.style.display = "flex";
 
-  const res = await fetch(SUBMIT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  let res;
+  let text = "";
+  try {
+    res = await fetch(SUBMIT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      mode: "cors",
+    });
 
-  const data = await res.json().catch(() => ({}));
+    text = await res.text(); // read raw so we can show errors cleanly
+  } catch (err) {
+    overlay.style.display = "none";
+    console.error("❌ Fetch failed:", err);
+    alert("❌ Could not reach backend. Check Network/CORS.");
+    throw err;
+  }
 
   overlay.style.display = "none";
 
-  if (!res.ok || !data?.success) {
-    throw new Error(data?.message || "Submission failed.");
+  console.log("📡 Backend status:", res.status);
+  console.log("📨 Backend response text:", text);
+
+  let data = {};
+  try { data = JSON.parse(text); } catch (_) {}
+
+  if (!res.ok || !data.success) {
+    alert("❌ Submit failed:\n" + (data.message || text || "Unknown error"));
+    throw new Error(data.message || "Submit failed");
   }
 
   submissionSent = true;
-  submissionResult = data; // contains certificateNumber etc.
-  console.log("✅ Submission sent on Step 7:", data);
-  return data;
+  alert("✅ Details submitted. Cert number: " + (data.certificateNumber || "N/A"));
+  console.log("✅ Submission OK:", data);
 }
 
-// ------------------------------
 // Continue buttons
-// ------------------------------
 continueButtons.forEach((btn) => {
   btn.addEventListener("click", async () => {
-    // 0-based steps:
-    // 0=Step1,1=Step2,2=Step3,3=Step4,4=Step5,5=Step6,6=Step7,7=Step8,8=Step9
+    console.log("➡️ Continue clicked at step:", currentStep);
+
+    // This is your “Step 7” trigger (0-based index 6)
     if (currentStep === 6) {
+      console.log("✅ Step 7 detected — submitting now");
       try {
         await sendSubmissionOnce();
-      } catch (err) {
-        console.error("❌ Error submitting on Step 7:", err);
-        alert("❌ Could not submit your details. Please check required fields and try again.");
-        return; // stop progression
+      } catch (e) {
+        console.log("🛑 Blocking progression due to submit failure");
+        return;
       }
     }
 
@@ -131,56 +122,27 @@ continueButtons.forEach((btn) => {
   });
 });
 
-// ------------------------------
 // Back buttons
-// ------------------------------
 backButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     currentStep = Math.max(0, currentStep - 1);
+    console.log("⬅️ Back clicked. Step now:", currentStep);
     showSection(currentStep);
   });
 });
 
-// ------------------------------
-// Payment button click (popup)
-// ------------------------------
+// Payment buttons
 paymentButtons.forEach((btn) => {
   btn.addEventListener("click", (e) => {
     e.preventDefault();
-
     const paymentUrl = btn.getAttribute("data-link");
+    console.log("💳 Payment clicked:", paymentUrl);
+
     if (!paymentUrl) {
       alert("❌ Payment link missing.");
       return;
     }
-
-    overlay.innerHTML = "Opening payment... please wait";
-    overlay.style.display = "flex";
-
-    try {
-      const popup = window.open(paymentUrl, "_blank");
-      if (popup) {
-        paymentStarted = true;
-        setTimeout(() => {
-          overlay.style.display = "none";
-          alert("✅ Payment window opened. Please complete payment and return here.");
-        }, 900);
-      } else {
-        overlay.style.display = "none";
-        alert("⚠️ Please allow pop-ups for this site to open the payment window.");
-      }
-    } catch (err) {
-      overlay.style.display = "none";
-      alert("❌ Error opening payment window. Please try again.");
-      console.error(err);
-    }
+    const popup = window.open(paymentUrl, "_blank");
+    if (!popup) alert("⚠️ Please allow pop-ups for this site.");
   });
 });
-
-// ------------------------------
-// If you still have a #submitBtn somewhere, hide it (no longer needed)
-// ------------------------------
-const submitBtn = document.getElementById("submitBtn");
-if (submitBtn) {
-  submitBtn.style.display = "none";
-}
