@@ -133,51 +133,48 @@
     const codeInput = document.getElementById('codeInput');
     const resultBox = document.getElementById('result');
 
-    const MASTER_OVERRIDE_CODE = "MEDC199401"; // always valid
+    const MASTER_OVERRIDE_CODE = "MEDC199401"; // ALWAYS VALID
+
+    function showResult(type, html) {
+      resultBox.style.display = 'block';
+      resultBox.className = type ? `result ${type}` : 'result';
+      resultBox.innerHTML = html;
+    }
 
     verifyBtn.addEventListener('click', async () => {
-      const code = codeInput.value.trim().toUpperCase();
+      const code = (codeInput.value || "").trim().toUpperCase();
 
-      if (!/^MEDC\d{6}$/.test(code)) {
-        resultBox.style.display = 'block';
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = '<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).';
-        return;
-      }
-
-      resultBox.style.display = 'block';
-      resultBox.className = 'result';
-      resultBox.innerHTML = '⏳ Verifying... Please wait.';
-
-      // ✅ Permanent override
+      // ✅ OVERRIDE FIRST
       if (code === MASTER_OVERRIDE_CODE) {
-        resultBox.className = 'result valid';
-        resultBox.innerHTML = `
+        showResult('valid', `
           <strong>✅ Verified Certificate</strong><br><br>
           <strong>Certificate ID:</strong> MEDC199401<br>
-          <strong>Name:</strong> Test User<br>
-          <strong>Certificate Type:</strong> Medical Certificate<br>
-          <strong>Reason:</strong> Administrative verification override<br>
-          <strong>Leave Dates:</strong> N/A<br>
-          <strong>Issued:</strong> System Override<br><br>
-          <em>This certificate was validated using an internal verification override.</em>
-        `;
+          <strong>Status:</strong> Override accepted<br><br>
+          <em>This certificate was validated using an internal override rule.</em>
+        `);
         return;
       }
+
+      // ❌ Validate format
+      if (!/^MEDC\\d{6}$/.test(code)) {
+        showResult('invalid',
+          '<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).'
+        );
+        return;
+      }
+
+      // ⏳ Loading
+      showResult('', '⏳ Verifying... Please wait.');
 
       try {
         const response = await fetch(`/api/verify/${code}`);
-
-        if (!response.ok) {
-          throw new Error("Verification service unavailable.");
-        }
+        if (!response.ok) throw new Error("Verification service unavailable");
 
         const data = await response.json();
 
         if (data.valid) {
           const r = data.record;
-          resultBox.className = 'result valid';
-          resultBox.innerHTML = `
+          showResult('valid', `
             <strong>✅ Verified Certificate</strong><br><br>
             <strong>Certificate ID:</strong> ${r.medcCode}<br>
             <strong>Name:</strong> ${r.firstName} ${r.lastName}<br>
@@ -186,14 +183,14 @@
             <strong>Leave Dates:</strong> ${r.fromDate} → ${r.toDate}<br>
             <strong>Issued:</strong> ${new Date(r.timestamp).toLocaleString()}<br><br>
             <em>This certificate was issued by an AHPRA-registered medical practitioner and verified via VividMedi’s secure system.</em>
-          `;
+          `);
         } else {
-          resultBox.className = 'result invalid';
-          resultBox.innerHTML = '<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.';
+          showResult('invalid',
+            '<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.'
+          );
         }
       } catch (err) {
-        resultBox.className = 'result invalid';
-        resultBox.innerHTML = `<strong>❌ Error:</strong> ${err.message}`;
+        showResult('invalid', `<strong>❌ Error:</strong> ${err.message}`);
       }
     });
 
