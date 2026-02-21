@@ -18,91 +18,40 @@
       padding:40px 15px;
       min-height:100vh;
     }
-
     .header{text-align:center;margin-bottom:25px;}
     .brand{font-size:2.2rem;font-weight:600;color:#111;}
     .brand span{color:#4AA7FF;}
-    .tagline{
-      margin-top:8px;
-      font-size:.95rem;
-      color:#111;
-      font-weight:500;
-      line-height:1.4;
-    }
-    .tagline span{
-      display:block;
-      color:#555;
-      font-weight:400;
-      font-size:.9rem;
-    }
+    .tagline{margin-top:8px;font-size:.95rem;color:#111;font-weight:500;line-height:1.4;}
+    .tagline span{display:block;color:#555;font-weight:400;font-size:.9rem;}
 
     .verify-container{
-      background:#fff;
-      width:100%;
-      max-width:600px;
-      padding:35px;
-      border-radius:16px;
-      box-shadow:0 6px 20px rgba(0,0,0,.08);
-      margin-top:25px;
-      text-align:center;
+      background:#fff;width:100%;max-width:600px;padding:35px;border-radius:16px;
+      box-shadow:0 6px 20px rgba(0,0,0,.08);margin-top:25px;text-align:center;
     }
-
     h2{font-size:1.3rem;margin-bottom:10px;}
     p{color:#555;font-size:.95rem;margin-bottom:20px;}
 
     input{
-      width:100%;
-      padding:12px;
-      border:1px solid #ccc;
-      border-radius:8px;
-      font-size:1rem;
-      margin-bottom:15px;
-      text-align:center;
+      width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;
+      font-size:1rem;margin-bottom:15px;text-align:center;
     }
-
     button{
-      width:100%;
-      padding:14px;
-      border:none;
-      border-radius:8px;
+      width:100%;padding:14px;border:none;border-radius:8px;
       background:linear-gradient(to right,#4AA7FF,#7BE8D9);
-      color:#fff;
-      font-weight:600;
-      font-size:1rem;
-      cursor:pointer;
-      transition:opacity .3s;
+      color:#fff;font-weight:600;font-size:1rem;cursor:pointer;transition:opacity .3s;
     }
     button:hover{opacity:0.9;}
 
     .result{
-      margin-top:25px;
-      text-align:left;
-      border-radius:10px;
-      padding:15px;
-      background:#f9fafb;
-      border:1px solid #e0e0e0;
-      font-size:.95rem;
-      line-height:1.5;
+      margin-top:25px;text-align:left;border-radius:10px;padding:15px;
+      background:#f9fafb;border:1px solid #e0e0e0;font-size:.95rem;line-height:1.5;
       display:none;
     }
-
     .valid{border-color:#00b67a;background:#f5fff7;}
     .invalid{border-color:#ff6b6b;background:#fff5f5;}
 
-    .back-link{
-      margin-top:25px;
-      display:inline-block;
-      color:#4AA7FF;
-      text-decoration:none;
-      font-weight:500;
-    }
-
-    .footer-note{
-      margin-top:50px;
-      font-size:.85rem;
-      color:#777;
-      text-align:center;
-    }
+    .back-link{margin-top:25px;display:inline-block;color:#4AA7FF;text-decoration:none;font-weight:500;}
+    .footer-note{margin-top:50px;font-size:.85rem;color:#777;text-align:center;}
   </style>
 </head>
 <body>
@@ -114,36 +63,12 @@
       <span>Reviewed & Issued by AHPRA-Registered Doctors<br>Accepted by Employers & Universities Australia-Wide</span>
     </p>
   </div>
-from flask import jsonify
 
-@app.get("/api/verify/<code>")
-def verify_certificate(code):
-    code = (code or "").strip().upper()
-
-    # ✅ Permanent override
-    if code == "MEDC199401":
-        return jsonify({
-            "valid": True,
-            "record": {
-                "medcCode": "MEDC199401",
-                "firstName": "Override",
-                "lastName": "Accepted",
-                "certType": "Medical Certificate",
-                "reason": "Administrative verification override",
-                "fromDate": "N/A",
-                "toDate": "N/A",
-                "timestamp": "2026-02-21T00:00:00Z"
-            }
-        }), 200
-
-    # ... then continue with your normal verification logic (DB lookup etc)
-    # record = db.find(...)
-    # return jsonify(...)
   <div class="verify-container">
     <h2>Verify a Medical Certificate</h2>
     <p>Enter the certificate number (e.g. <strong>MEDC123456</strong>) to confirm authenticity.</p>
-    <input type="text" id="codeInput" placeholder="Enter MEDC code" maxlength="10">
-    <button id="verifyBtn">Verify</button>
+    <input type="text" id="codeInput" placeholder="Enter MEDC code" maxlength="20" inputmode="text">
+    <button id="verifyBtn" type="button">Verify</button>
 
     <div id="result" class="result"></div>
 
@@ -157,20 +82,26 @@ def verify_certificate(code):
     const codeInput = document.getElementById('codeInput');
     const resultBox = document.getElementById('result');
 
-    const MASTER_OVERRIDE_CODE = "MEDC199401"; // ALWAYS VALID
+    // ✅ Permanent override code
+    const MASTER_OVERRIDE_CODE = "MEDC199401";
 
-    function showResult(type, html) {
-      resultBox.style.display = 'block';
-      resultBox.className = type ? `result ${type}` : 'result';
+    function show(type, html) {
+      resultBox.style.display = "block";
+      resultBox.className = type ? `result ${type}` : "result";
       resultBox.innerHTML = html;
     }
 
-    verifyBtn.addEventListener('click', async () => {
-      const code = (codeInput.value || "").trim().toUpperCase();
+    function normalise(raw) {
+      // makes it tolerant to spaces, quotes, hyphens etc.
+      return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    }
 
-      // ✅ OVERRIDE FIRST
+    verifyBtn.addEventListener('click', async () => {
+      const code = normalise(codeInput.value);
+
+      // ✅ OVERRIDE FIRST — no API call at all
       if (code === MASTER_OVERRIDE_CODE) {
-        showResult('valid', `
+        show("valid", `
           <strong>✅ Verified Certificate</strong><br><br>
           <strong>Certificate ID:</strong> MEDC199401<br>
           <strong>Status:</strong> Override accepted<br><br>
@@ -179,42 +110,56 @@ def verify_certificate(code):
         return;
       }
 
-      // ❌ Validate format
+      // Standard format: MEDC + 6 digits
       if (!/^MEDC\\d{6}$/.test(code)) {
-        showResult('invalid',
-          '<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).'
-        );
+        show("invalid", "<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).");
         return;
       }
 
-      // ⏳ Loading
-      showResult('', '⏳ Verifying... Please wait.');
+      show("", "⏳ Verifying... Please wait.");
 
       try {
-        const response = await fetch(`/api/verify/${code}`);
-        if (!response.ok) throw new Error("Verification service unavailable");
+        // If your API is on the SAME origin, keep this:
+        const url = `/api/verify/${code}`;
+
+        // If your API is on a DIFFERENT host, use this instead:
+        // const url = `https://vividmedi-backend.onrender.com/api/verify/${code}`;
+
+        const response = await fetch(url, { method: "GET" });
+
+        // If server returns HTML/503/etc, don't try to JSON parse it
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        const isJson = contentType.includes("application/json");
+
+        if (!response.ok) {
+          const body = isJson ? JSON.stringify(await response.json()) : await response.text();
+          throw new Error(`Verify failed (${response.status}). ${body.slice(0, 200)}`);
+        }
+
+        if (!isJson) {
+          const body = await response.text();
+          throw new Error(`Verify returned non-JSON. ${body.slice(0, 200)}`);
+        }
 
         const data = await response.json();
 
-        if (data.valid) {
-          const r = data.record;
-          showResult('valid', `
+        if (data && data.valid) {
+          const r = data.record || {};
+          show("valid", `
             <strong>✅ Verified Certificate</strong><br><br>
-            <strong>Certificate ID:</strong> ${r.medcCode}<br>
-            <strong>Name:</strong> ${r.firstName} ${r.lastName}<br>
-            <strong>Certificate Type:</strong> ${r.certType}<br>
-            <strong>Reason:</strong> ${r.reason}<br>
-            <strong>Leave Dates:</strong> ${r.fromDate} → ${r.toDate}<br>
-            <strong>Issued:</strong> ${new Date(r.timestamp).toLocaleString()}<br><br>
+            <strong>Certificate ID:</strong> ${r.medcCode || code}<br>
+            <strong>Name:</strong> ${(r.firstName || "")} ${(r.lastName || "")}<br>
+            <strong>Certificate Type:</strong> ${r.certType || ""}<br>
+            <strong>Reason:</strong> ${r.reason || ""}<br>
+            <strong>Leave Dates:</strong> ${(r.fromDate || "")} → ${(r.toDate || "")}<br>
+            <strong>Issued:</strong> ${r.timestamp ? new Date(r.timestamp).toLocaleString() : ""}<br><br>
             <em>This certificate was issued by an AHPRA-registered medical practitioner and verified via VividMedi’s secure system.</em>
           `);
         } else {
-          showResult('invalid',
-            '<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.'
-          );
+          show("invalid", "<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.");
         }
       } catch (err) {
-        showResult('invalid', `<strong>❌ Error:</strong> ${err.message}`);
+        show("invalid", `<strong>❌ Error:</strong> ${err.message}`);
       }
     });
 
@@ -222,6 +167,5 @@ def verify_certificate(code):
       if (e.key === 'Enter') verifyBtn.click();
     });
   </script>
-
 </body>
 </html>
