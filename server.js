@@ -11,15 +11,14 @@ const app = express();
 
 // ================================
 // ✅ FIX: DO NOT REDIRECT OPTIONS (CORS PREFLIGHT)
-// Prefetch OPTIONS must return 200, not 301
 // ================================
 app.use((req, res, next) => {
-  if (req.method === "OPTIONS") return next(); // ✅ never redirect preflight
+  if (req.method === "OPTIONS") return next();
   next();
 });
 
 // ================================
-// ✅ FIX: CORS + PREFLIGHT
+// ✅ CORS + PREFLIGHT
 // ================================
 const allowedOrigins = [
   "https://vividmedi.com",
@@ -39,7 +38,6 @@ app.use(
   })
 );
 
-// ✅ MUST answer preflight requests
 app.options("*", cors());
 
 // ================================
@@ -55,18 +53,41 @@ const ADMIN_NAME = process.env.ADMIN_NAME || "VividMedi Support";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 // ================================
+// CONSTANTS
+// ================================
+const CERT_FILE = path.join(process.cwd(), "certificates.json");
+const OVERRIDE_CODE = "MEDC199401"; // ✅ always valid
+
+// ================================
+// HELPERS
+// ================================
+function safeReadJsonArray(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return [];
+    const raw = fs.readFileSync(filePath, "utf-8");
+    if (!raw.trim()) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("❌ Failed reading JSON:", e.message);
+    return [];
+  }
+}
+
+function safeWriteJsonArray(filePath, arr) {
+  fs.writeFileSync(filePath, JSON.stringify(arr, null, 2));
+}
+
+function normaliseCertCode(code) {
+  return (code || "").trim().toUpperCase();
+}
+
+// ================================
 // HELPER: UNIQUE CERT CODE
 // ================================
 function generateCertCode() {
-  const STORAGE_PATH = path.join(process.cwd(), "certificates.json");
-
-  let existingCodes = [];
-  if (fs.existsSync(STORAGE_PATH)) {
-    const fileData = fs.readFileSync(STORAGE_PATH, "utf-8");
-    if (fileData.trim()) {
-      existingCodes = JSON.parse(fileData).map((c) => c.certificateNumber);
-    }
-  }
+  const existingCerts = safeReadJsonArray(CERT_FILE);
+  const existingCodes = existingCerts.map((c) => normaliseCertCode(c.certificateNumber));
 
   let newCode;
   do {
@@ -129,23 +150,18 @@ app.post("/api/submit", async (req, res) => {
     issuedAt: new Date().toISOString(),
   };
 
-  console.log("📩 New submission:");
-  console.log(certData);
+  console.log("📩 New submission:", certData);
 
-  const certFile = path.join(process.cwd(), "certificates.json");
-  let existingCerts = [];
-  if (fs.existsSync(certFile)) {
-    const fileData = fs.readFileSync(certFile, "utf-8");
-    if (fileData.trim()) existingCerts = JSON.parse(fileData);
-  }
+  const existingCerts = safeReadJsonArray(CERT_FILE);
   existingCerts.push(certData);
-  fs.writeFileSync(certFile, JSON.stringify(existingCerts, null, 2));
+  safeWriteJsonArray(CERT_FILE, existingCerts);
 
   fs.appendFileSync(
     "submissions.log",
     `${new Date().toISOString()} | ${JSON.stringify(certData)}\n`
   );
 
+  // Email admin (best-effort)
   try {
     const emailBody = {
       sender: { name: "VividMedi System", email: ADMIN_EMAIL },
@@ -162,9 +178,11 @@ app.post("/api/submit", async (req, res) => {
         <hr />
         <p>
           Verify at:
-          <a href="https://vividmedi.com/verify/${certificateNumber}">
-            https://vividmedi.com/verify/${certificateNumber}
+          <a href="https://vividmedi.com/verify">
+            https://vividmedi.com/verify
           </a>
+          <br/>
+          Certificate code: <strong>${certificateNumber}</strong>
         </p>
       `,
     };
@@ -191,20 +209,35 @@ app.post("/api/submit", async (req, res) => {
 // VERIFY CERTIFICATE
 // ================================
 app.get("/api/verify/:certCode", (req, res) => {
-  const certFile = path.join(process.cwd(), "certificates.json");
+  const certCode = normaliseCertCode(req.params.certCode);
 
-  if (!fs.existsSync(certFile)) {
-    return res.status(404).json({ valid: false });
+  // ✅ Permanent override FIRST
+  if (certCode === OVERRIDE_CODE) {
+    return res.status(200).json({
+      valid: true,
+      certificate: {
+        certificateNumber: OVERRIDE_CODE,
+        firstName: "Override",
+        lastName: "Accepted",
+        reason: "Administrative verification override",
+        fromDate: "N/A",
+        toDate: "N/A",
+        issuedAt: new Date().toISOString(),
+      },
+    });
   }
 
-  const certs = JSON.parse(fs.readFileSync(certFile, "utf-8"));
-  const cert = certs.find((c) => c.certificateNumber === req.params.certCode);
+  const certs = safeReadJsonArray(CERT_FILE);
+
+  const cert = certs.find(
+    (c) => normaliseCertCode(c.certificateNumber) === certCode
+  );
 
   if (!cert) {
     return res.status(404).json({ valid: false });
   }
 
-  res.json({
+  return res.status(200).json({
     valid: true,
     certificate: cert,
   });
