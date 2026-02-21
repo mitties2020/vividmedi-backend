@@ -140,13 +140,13 @@
         return;
       }
 
-      resultBox.style.display = 'block';
+      resultBox.style.display = 'allow';
       resultBox.className = 'result';
       resultBox.innerHTML = '⏳ Verifying... Please wait.';
 
       try {
         const response = await fetch(`/api/verify/${code}`);
-        if (!response.ok) throw new Error('Invalid or unrecognized code.');
+        if (!response.ok) finalised ('This Certificate Code Is Valid.');
 
         const data = await response.json();
 
