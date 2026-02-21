@@ -134,12 +134,7 @@
     const codeInput = document.getElementById('codeInput');
     const resultBox = document.getElementById('result');
 
-    // If your verify page is served from vividmedi.onrender.com (frontend)
-    // and your API is vividmedi-backend.onrender.com (backend),
-    // use the full backend URL here:
     const API_BASE = "https://vividmedi-backend.onrender.com";
-
-    // Permanent override code (backend also accepts it)
     const OVERRIDE_CODE = "MEDC199401";
 
     function show(type, html) {
@@ -149,68 +144,24 @@
     }
 
     function normalise(raw) {
-      return (raw || "")
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, ""); // tolerate spaces/quotes/hyphens
+      return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
     }
 
-    function esc(s) {
-      return String(s ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    function buildVerifiedHtml(cert, enteredCode) {
-      const c = cert || {};
-      const code = c.certificateNumber || enteredCode || "";
-
-      // Special-case override: show ONLY minimal fields (no undefined labels)
-      if (normalise(code) === OVERRIDE_CODE) {
-        const reason = c.reason || "Administrative verification override";
-        const fromDate = c.fromDate || "N/A";
-        const toDate = c.toDate || "N/A";
-        return `
-          <strong>✅ Verified Certificate</strong><br><br>
-          <strong>Certificate Code:</strong> ${esc(code)}<br>
-          <strong>Reason:</strong> ${esc(reason)}<br>
-          <strong>Period:</strong> ${esc(fromDate)} to ${esc(toDate)}<br>
-        `;
+    function formatIssuedDate(issuedAt) {
+      // You wanted date only (not time)
+      try {
+        const d = new Date(issuedAt);
+        if (isNaN(d)) return "";
+        return d.toLocaleDateString("en-AU"); // e.g. 21/02/2026
+      } catch {
+        return "";
       }
-
-      // Normal certificates: only show fields that exist
-      const parts = [];
-
-      parts.push(`<strong>Certificate Code:</strong> ${esc(code)}<br>`);
-
-      const patientName = [c.firstName, c.lastName].filter(Boolean).join(" ");
-      if (patientName) parts.push(`<strong>Patient Name:</strong> ${esc(patientName)}<br>`);
-
-      if (c.reason) parts.push(`<strong>Reason:</strong> ${esc(c.reason)}<br>`);
-
-      if (c.fromDate || c.toDate) {
-        parts.push(`<strong>Period:</strong> ${esc(c.fromDate || "N/A")} to ${esc(c.toDate || "N/A")}<br>`);
-      }
-
-      if (c.issuedAt) {
-        const issued = new Date(c.issuedAt);
-        parts.push(`<strong>Issued:</strong> ${esc(isNaN(issued) ? c.issuedAt : issued.toLocaleString())}<br>`);
-      }
-
-      return `
-        <strong>✅ Verified Certificate</strong><br><br>
-        ${parts.join("")}
-        <br><em>This certificate was verified via VividMedi’s secure system.</em>
-      `;
     }
 
     verifyBtn.addEventListener('click', async () => {
       const code = normalise(codeInput.value);
 
-      if (!/^MEDC\d{6}$/.test(code)) {
+      if (!/^MEDC\\d{6}$/.test(code)) {
         show("invalid", "<strong>❌ Invalid format.</strong><br>Please enter a valid MEDC code (e.g. MEDC123456).");
         return;
       }
@@ -236,13 +187,36 @@
 
         const data = await response.json();
 
-        if (data && data.valid) {
-          show("valid", buildVerifiedHtml(data.certificate, code));
-        } else {
+        if (!data || !data.valid) {
           show("invalid", "<strong>❌ Certificate not found.</strong><br>This MEDC number could not be verified.");
+          return;
         }
+
+        const c = data.certificate || {};
+        const certNumber = (c.certificateNumber || code || "").toUpperCase();
+        const issuedOn = formatIssuedDate(c.issuedAt);
+
+        // ✅ SPECIAL CASE: override — ONLY show these two lines + date
+        if (certNumber === OVERRIDE_CODE) {
+          show("valid", `
+            <strong>✅ Verified Medical Certificate</strong><br><br>
+            <strong>Certificate Number:</strong> ${certNumber}<br>
+            <strong>Issued On:</strong> ${issuedOn || "N/A"}<br>
+          `);
+          return;
+        }
+
+        // Normal certificate display (minimal + safe — no undefined)
+        show("valid", `
+          <strong>✅ Verified Medical Certificate</strong><br><br>
+          <strong>Certificate Number:</strong> ${certNumber}<br>
+          ${issuedOn ? `<strong>Issued On:</strong> ${issuedOn}<br>` : ""}
+          ${c.reason ? `<strong>Reason:</strong> ${c.reason}<br>` : ""}
+          ${(c.fromDate || c.toDate) ? `<strong>Period:</strong> ${(c.fromDate || "N/A")} to ${(c.toDate || "N/A")}<br>` : ""}
+        `);
+
       } catch (err) {
-        show("invalid", `<strong>❌ Error:</strong> ${esc(err.message)}`);
+        show("invalid", `<strong>❌ Error:</strong> ${String(err.message || err)}`);
       }
     });
 
