@@ -114,7 +114,31 @@
       <span>Reviewed & Issued by AHPRA-Registered Doctors<br>Accepted by Employers & Universities Australia-Wide</span>
     </p>
   </div>
+from flask import jsonify
 
+@app.get("/api/verify/<code>")
+def verify_certificate(code):
+    code = (code or "").strip().upper()
+
+    # ✅ Permanent override
+    if code == "MEDC199401":
+        return jsonify({
+            "valid": True,
+            "record": {
+                "medcCode": "MEDC199401",
+                "firstName": "Override",
+                "lastName": "Accepted",
+                "certType": "Medical Certificate",
+                "reason": "Administrative verification override",
+                "fromDate": "N/A",
+                "toDate": "N/A",
+                "timestamp": "2026-02-21T00:00:00Z"
+            }
+        }), 200
+
+    # ... then continue with your normal verification logic (DB lookup etc)
+    # record = db.find(...)
+    # return jsonify(...)
   <div class="verify-container">
     <h2>Verify a Medical Certificate</h2>
     <p>Enter the certificate number (e.g. <strong>MEDC123456</strong>) to confirm authenticity.</p>
